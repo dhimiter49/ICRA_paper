@@ -308,28 +308,28 @@ Linear constraints can be arbitrarily added to this objective, see \Cref{tab:con
 \end{table}
 \begin{tikzpicture}[remember picture, overlay]
     \draw [rounded corners]
-        ([xshift=-14.6mm,yshift=5.5mm]upper.center) --
-        ([xshift=-6mm,yshift=5.5mm]upper.center) --
-        ([xshift=-6mm,yshift=2mm]upper.center) --
+        ([xshift=-14.6mm,yshift=5.7mm]upper.center) --
+        ([xshift=-6mm,yshift=5.7mm]upper.center) --
+        ([xshift=-6mm,yshift=2.2mm]upper.center) --
         cycle;
 \end{tikzpicture}
 \begin{tikzpicture}[remember picture,overlay]
     \draw [rounded corners]
-        ([xshift=-8.5mm,yshift=2.5mm]lower.center) --
-        ([xshift=-0.3mm,yshift=2.5mm]lower.center) --
-        ([xshift=-8.5mm,yshift=5.65mm]lower.center) --
+        ([xshift=-8.8mm,yshift=2.7mm]lower.center) --
+        ([xshift=-0.6mm,yshift=2.7mm]lower.center) --
+        ([xshift=-8.8mm,yshift=5.85mm]lower.center) --
         cycle;
 \end{tikzpicture}
 \begin{tikzpicture}[remember picture,overlay]
-    \draw let \p1=($(top)-(bottom)$),\n1={atan2(\y1,\x1)} in node[xshift=-7.5mm,yshift=3.9mm,rotate fit=\n1,fit=(bottom) (top),draw,rounded corners,inner sep=1.5pt]{};
+    \draw let \p1=($(top)-(bottom)$),\n1={atan2(\y1,\x1)} in node[xshift=-7.8mm,yshift=4.1mm,rotate fit=\n1,fit=(bottom) (top),draw,rounded corners,inner sep=1.5pt]{};
 \end{tikzpicture}
 \begin{tikzpicture}[remember picture,overlay]
-    \draw let \p1=($(top2)-(bottom2)$),\n1={atan2(\y1,\x1)} in node[yshift=4.4mm, xshift=-7.5mm,rotate fit=\n1,fit=(bottom2) (top2),draw,rounded corners, inner xsep=1.5pt, inner ysep=0.5pt]{};
+    \draw let \p1=($(top2)-(bottom2)$),\n1={atan2(\y1,\x1)} in node[yshift=4.6mm, xshift=-7.8mm,rotate fit=\n1,fit=(bottom2) (top2),draw,rounded corners, inner xsep=1.5pt, inner ysep=0.5pt]{};
 \end{tikzpicture}
 Crowd distance constraints use a prediction model for the future position of the crowd. We assume that the crowd holds its current velocity and increase the safety distance by the maximum distance in the error of the prediction. The maximum error will be lower than the distance covered during time-step $T$ with $v_{max}$, as represented in \Cref{fig:uncert}.
 \begin{figure}[t]
     \centering
-        \resizebox{7cm}{!}{\input{schema/uncertainty.tex}}
+        \resizebox{8cm}{!}{\input{schema/uncertainty.tex}}
     \caption{Uncertainty explodes for future predictions (shown here for three steps in the future).}
     \label{fig:uncert}
 \end{figure}
@@ -402,7 +402,7 @@ ProDMP was trained using the \textbf{CrowdNavigation}\footnote{\url{link/to/gca_
 \begin{align*}
     r_i = \alpha\sum_{t}^{t+r}\left\vert\left\vert P_t - P^{ref}_t\right\vert\right\vert,
 \end{align*}
-as the MPC behaviour becomes unpredictable for RL when the term is omitted. There are limitation to the effect of the intrinsic component for highly jerky control from MPC. This can happen when considering uncertainty in the crowd prediction. In order to ensure passive safety, the safety distance $d$ is augmented for future positions by the maximum error in distance prediction, as discussed in \Cref{sec:mpc} and shown in \Cref{fig:uncert}. While with this conservative constraint it is possible to ensure passive safety, the FRP becomes more prominent. As QP-solver \cite{goulart_clarabel_2024} is used with tolerance parameters of $10^{-5}$. Moreover, crowd-distance, velocity and acceleration constraints are removed when possible based on distance and velocity in order to lower the computational footprint. Further implementations details can be found for all components \textbf{MPCCrowdNav}\footnote{\url{link/to/environment}}, \textbf{TrustRegionProjections}\footnote{\url{link/to/rl_algorithm}}.
+as the MPC behaviour becomes unpredictable for RL when the term is omitted. There are limitation to the effect of the intrinsic component for highly jerky control from MPC. This can happen when considering uncertainty in the crowd prediction. In order to ensure passive safety, the safety distance $d$ is augmented for future positions by the maximum error in distance prediction, as discussed in \Cref{sec:mpc} and shown in \Cref{fig:uncert}. With this conservative constraint the FRP becomes more prominent. As QP-solver \cite{goulart_clarabel_2024} is used with tolerance parameters of $10^{-5}$. Moreover, crowd-distance, velocity and acceleration constraints are removed when possible based on distance and velocity in order to lower the computational footprint. Further implementations details can be found for all components \textbf{MPCCrowdNav}\footnote{\url{link/to/environment}}, \textbf{TrustRegionProjections}\footnote{\url{link/to/rl_algorithm}}.
 % Further implementations details can be found for all components \textbf{MPCCrowdNav}\footnote{\url{https://github.com/dhimiter49/mpc_crowd_nav}}, \textbf{TrustRegionProjections}\footnote{\url{https://github.com/dhimiter49/TrustRegionProjections}}.
 
 \subsection{Constant Velocity Crowd}
@@ -490,7 +490,6 @@ We use Gym-collision-avoidance mainly to compare with the GA3C-CADRL algorithm. 
 The advantage of MPC is clear in this environment as all other learning approaches fail to achieve zero collisions. Interestingly, ProDMP MPC trained with ORCA and without uncertainty does not ensure theoretically no collisions, however in this test case it never collides with itself. The reduction in breaking instances is expected when using uncertainty to model crowd safety and it increase with relaxing this uncertainty is expected as the modeling will make more often mistakes on the correct boundaries or where the agent could possibly be in the future. Again in this case the number of breaking instances is reduced using ProDMP.
 
 TODO: Comparing MPC, ProDMP MPC, GA3C-CADRL, ProDMP, MPC relaxucnert, ORCA all in one experiment
-TODO if enough time: Train ProDMP with itself (will not be possible)
 
 \begin{table*}[h]
     \centering
