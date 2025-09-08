@@ -94,7 +94,7 @@ triangle/.style={draw,fill=red!20,regular polygon,regular polygon sides=3}}
 \def\equationautorefname~#1\null{Equation (#1)\null}
 
 \usepackage{booktabs}
-\usepackage{algorithm2e}
+\usepackage[linesnumbered]{algorithm2e}
 \SetKwComment{Comment}{/* }{ */}
 \RestyleAlgo{ruled}
 
@@ -172,22 +172,22 @@ triangle/.style={draw,fill=red!20,regular polygon,regular polygon sides=3}}
 \pagestyle{plain}
 
 \begin{abstract}
-    Current research on robot navigation focuses on two main challenges: safety and collaborative behaviour. While recent approaches that make use of deep learning methods achieve remarkable results they often neglect any safety guarantees. We employ passive safety in order to ensure at least some level of constraint. This implies using classical control based on model predictive control (MPC) which introduces other challenges, e.g. freezing robot problem (FRP) and in general worse collaboration with the crowd. Collaboration is an all encompassing term, however it relates more closely to the broader topic of human robot interaction (HRI) and for navigation more specifically we talk about comfortable, legible, polite, abiding to social norms, agent understanding, proactive and context appropriate behaviour \cite{francis_principles_2025}. We adapt to the MPC-objective a learned feedback through Reinforcement Learning (RL) which serves to better take into consideration the crowd. The objective of our work is to explore a framework where it is possible to ensure safety guarantees while integrating the desirable social pre-requisites. We argue that it is possible to achieve this by combining classical, constraint-adherent approaches as MPC to learning approaches in order to efficiently be safe in social scenarios. We evaluate the effects this hybrid approach has on efficiency, safety and FRP while comparing to SOTA algorithms.
+    Current research on robot navigation focuses on two main challenges: safety and collaborative behaviour. While recent approaches that make use of deep learning methods achieve remarkable results they often neglect any safety guarantees. We employ passive safety in order to ensure at least some level of constraint. This implies using classical control based on model predictive control (MPC) which introduces other challenges, e.g. freezing robot problem (FRP) and in general worse collaboration with the crowd. Collaboration is an all encompassing term, however it relates closely to the broader topic of human robot interaction (HRI) and for navigation more specifically we desire comfortable, legible, polite, abiding to social norms, agent understanding, proactive and context appropriate behaviour \cite{francis_principles_2025}. We adapt to the MPC-objective a learned feedback through Reinforcement Learning (RL) which serves to better take into consideration the dense and dynamic crowd. The objective of our work is to explore a framework where it is possible to ensure safety guarantees while integrating the desirable social pre-requisites. We argue that it is possible to achieve this by combining classical, constraint-adherent approaches as MPC to learning approaches in order to efficiently be safe in social scenarios. We evaluate the effects this hybrid approach has on efficiency, safety and FRP while comparing to SOTA algorithms.
 \end{abstract}
 
 
 \section{Introduction}\label{sec:intro}
-    The robot navigation problem is gaining increasing traction as newer and better technologies allow for robots to share the same environment as humans. Given that it is impoailable ssible to have a perfect prediction of how people will behave, the problem is NP-hard.
-    % Fraichard (2007) advocated three quantities as essential to the proper evaluation of motion safety: the dynamics of the robot, the dynamics of the environment,and a long enough time horizon.
+    The robot navigation problem is gaining increasing traction as newer and better technologies allow for robots to share the same environment as humans. Given that it is impossible to have a perfect prediction of how people will behave, the problem is NP-hard.
+    % Fraichard (2007) advocated three quantities as essential to the proper evaluation of motion safety: the dynamics of the robot, the dynamics of the environment and a long enough time horizon.
     If a perfect prediction were possible then a path finding algorithm would suffice, instead the common approaches implemented nowadays are: geometric methods i.e. dynamic window approach (DWA) \cite{fox_dynamic_1997, patel_dwa-rl_2021} or inevitable collision states (ICS) \cite{fraichard_inevitable_2003}, model predictive control (MPC) or receding horizon control (RHC) \cite{schouwenaars_receding_2004,bohorquez_safe_2016,dorante_design_2018,ciocca_balance_2020} and finally learning approaches \cite{alahi_2016_CVPR,everett_collision_2021,han_deep_2022,liu_intention_2023,moder_navigating_2024}. Research focuses on the later two as approaches like DWA become a thing of the past \cite{rhino,minerva}.
 
-    MPC makes use of a model of the environment or the task and a fixed length horizon in order to optimize over its objective. This is done iteratively in a feedback control scheme where it is possible to define hard constraints if the objective is written as a quadratic function. Real-time control is possible using broadly available hardware and fast QP-solvers \cite{osqp,goulart_clarabel_2024,bambade2025tro}. Through the constraints it is possible to ensure \textit{passive safety} \cite{macek_towards_2009} which means that in case of a collision the robot will be static. However, MPC approaches can be too constraining and result in the FRP \cite{trautman_unfreezing_2010}. In order to alleviate this problem, a perfect model of the future is not enough. It is necessary to implement joint-collision-avoidance which means that the robot takes action based on the fact that other members of the crowd will also try to avoid collisions, as motivated in \cite{trautman_unfreezing_2010}.
+    MPC makes use of a model of the environment or the task and a fixed length horizon in order to optimize over its objective. This is done iteratively in a feedback control scheme where it is possible to define hard constraints with a convex objective. Real-time control is possible using broadly available hardware and fast QP-solvers \cite{osqp,goulart_clarabel_2024,bambade2025tro}. Through the constraints it is possible to ensure \textit{passive safety} \cite{macek_towards_2009} which means that in case of a collision the robot will be static. However, MPC approaches can be too constraining and result in the FRP \cite{trautman_unfreezing_2010}. In order to alleviate this problem, a perfect model of the future is not enough. It is necessary to implement joint-collision-avoidance which means that the robot takes action based on the fact that other members of the crowd will also try to avoid collisions, as motivated in \cite{trautman_unfreezing_2010}.
 
-    We address the problem by learning trajectories that comply with the state and future intent of the crowd. This has the same effect as \cite{sathyamoorthy_frozone_2020}, however we do not explicitly define control mechanics to evade potentially freezing zones. We hypothesize that through joint learning of RL with an MPC controller it is possible to combine the strengths of both approaches. From the one side it is possible to learn efficient, social trajectories thanks to RL and on the other hand it is possible to guarantee passive safety. Moreover, using an intrinsic reward, the RL policy will better learn to adapt to the safety maneuvers of MPC.
+    We address the problem by learning trajectories that comply with the state and future intent of the crowd. This has the same effect as \cite{sathyamoorthy_frozone_2020}, however we do not explicitly define control mechanics to evade potentially freezing zones. We hypothesize that through joint learning of RL with an MPC controller it is feasible to combine the strengths of both approaches. From the one side we learn efficient, social trajectories thanks to RL and on the other hand it is possible to guarantee passive safety. Moreover, using an intrinsic reward, the RL policy will better learn to adapt to the safety maneuvers of MPC.
 
-    Our work is inspired by the current attempt to unify MPC and RL, see \cite{recht_tour_2018,reiter_synthesis_2025}. We make use of the same theory as papers on safety filters for learning approaches like \cite{tearle_predictive_2021,brito_where_2021,wabersich_predictive_2022,strawn_conformal_2023,kicki_bridging_2024}, however one of our key differences is learning an optimal trajectory for the robot to follow, which better incorporates infinite-horizon information learned through episodic RL. Complementary, MPC serves as a safety filter over the RL controller than can potentially make small mistakes in its prediction.
+    Our work is inspired by the current attempt to unify MPC and RL \cite{recht_tour_2018,reiter_synthesis_2025}. We make use of the same theory as papers on safety filters for learning approaches \cite{tearle_predictive_2021,brito_where_2021,wabersich_predictive_2022,strawn_conformal_2023,kicki_bridging_2024}, however one of our key differences is learning an optimal trajectory for the robot to follow, which better incorporates infinite-horizon information learned through episodic RL. Complementary, MPC serves as a safety filter over the RL controller than can potentially make small mistakes in its prediction.
 
-    We list as our main contribution a novel method to combine classic robot navigation with learning specifically for robot navigation and analyze its advantages and limitations. We are able to improve performance in key metrics when enhancing MPC with RL while still being bound by the explosion of constraints in dense scenarios. This implies a trade-off between better collaboration through joint-collision-avoidance and theoretical safety. The full adherence to social principles in robot navigation is beyond the scope of this paper while it remains an objective for our future work.
+    We list as our main contribution a novel method to combine classic robot navigation with learning, specifically for robot navigation and analyze its advantages and limitations. We are able to improve performance in key metrics when enhancing MPC with RL while still being bound by the explosion of constraints in dense scenarios. This implies a trade-off between better collaboration through joint-collision-avoidance and theoretical safety. The full adherence to social principles in robot navigation is beyond the scope of this paper while it remains an objective for our future work.
 
     Notes
     \begin{itemize}
@@ -197,7 +197,7 @@ triangle/.style={draw,fill=red!20,regular polygon,regular polygon sides=3}}
 
 \section{Problem Formulation}\label{sec:problem}
 
-The navigation problem can be mathematically formulated as a \textit{\acrlong*{mdp}} (\acrshort*{mdp}) defined by the tuple $(\mathcal{S,A,P,R})$, where $\mathcal{S}$, $\mathcal{A}$ are the \textit{state space} and \textit{action space} respectively, $\mathcal{P}(s,a,s')$ is the \textit{transition probability} from state $s\in\mathcal{S}$ to state $s'\in\mathcal{S}$ via action $a\in\mathcal{A}$ and $\mathcal{R}:\mathcal{S}\times\mathcal{A}\rightarrow \mathbb{R}$ is the \textit{reward function}. The manner in which the components of the \acrshort*{mdp} are defined, describe a specific task. The transition probabilities are not considered explicitly in this work, however they can have a major effect on the complexity of the task. Generally, the navigation task involves an agent moving in a crowded environment with a given goal position. We use the term \textit{agent} to refer to the robot and the term \textit{crowd} to refer to people in the environment.
+The navigation problem can be mathematically formulated as a \textit{\acrlong*{mdp}} (\acrshort*{mdp}) defined by the tuple $(\mathcal{S,A,P,R})$, where $\mathcal{S}$, $\mathcal{A}$ are the \textit{state space} and \textit{action space} respectively, $\mathcal{P}(s,a,s')$ is the \textit{transition probability} from state $s\in\mathcal{S}$ to state $s'\in\mathcal{S}$ via action $a\in\mathcal{A}$ and $\mathcal{R}:\mathcal{S}\times\mathcal{A}\rightarrow \mathbb{R}$ is the \textit{reward function}. The manner in which the components of the \acrshort*{mdp} are defined, describe a specific task. The transition probabilities are not considered explicitly in this work, however they can have a major effect on the complexity of the task. Generally, the navigation task involves an agent moving in a crowded environment with a given goal position. In this paper we use the term \textit{agent} to refer to the robot and the term \textit{crowd} to refer to people in the environment.
 
 \subsection{Reinforcement Learning}
 
@@ -206,7 +206,7 @@ The objective in RL is to solve the MDP by maximizing the expected return over t
     \label{eq:rl}
     G_t=\sum\limits^\infty_{k=0}\gamma^k\mathbb{E}_{(s_{t+k}, a_{t+k})\sim\rho} \mathcal{R}(s_{t+k}, a_{t+k}),
 \end{equation}
-where $\rho$ represents the marginal distribution over states and actions. The factor $\gamma$, $0\leq\gamma < 1$ is an additional parameter of the MDP in order to limit $G_t$. . The majority of RL algorithms use a value function (VF) (referred to as a critic as well) to evaluate the objective and steer the learning process. The VF makes an estimate of how much reward over time is expected starting from a given state or state-action pair. The most direct way to solve the problem and train an agent is policy gradient (PG) method. PG calculates a gradient towards the objective, which is often represented by a VF. The policy is implemented as a parameterized Gaussian distribution $\pi_{\boldsymbol{\theta}}(a\vert s)=\mathcal{N}(a\vert \mu_{\boldsymbol{\theta}}(s), \Sigma_{\boldsymbol{\theta}}(s))$. The objective can be written in terms of the parameters that need to be learned
+where $\rho$ represents the marginal distribution over states and actions. The factor $\gamma$, $0\leq\gamma < 1$ is an additional parameter of the MDP in order to limit $G_t$. The majority of RL algorithms use a value function (VF) (referred to also as a critic) to evaluate the objective and steer the learning process. The VF makes an estimate of how much reward over time is expected starting from a given state or state-action pair. The most direct way to solve the problem and train an agent is policy gradient (PG). PG calculates a gradient towards the objective, which is often represented by a VF. The policy is implemented as a parameterized Gaussian distribution $\pi_{\boldsymbol{\theta}}(a\vert s)=\mathcal{N}(a\vert \mu_{\boldsymbol{\theta}}(s), \Sigma_{\boldsymbol{\theta}}(s))$. The objective can be written in terms of the parameters that need to be learned
 \begin{align*}
     G_t(\boldsymbol{\theta})&=\mathbb{E}_{\tau\sim p_{\boldsymbol{\theta}}(\tau)}\left[ \sum\limits^\infty_{k=0}\gamma^k \mathcal{R}(s_{t+k}, a_{t+k})\right] \text{with},\\
     p_{\boldsymbol{\theta}}(\tau)=p&(s_0)\prod\limits^\infty_{k=0}\pi_{\boldsymbol{\theta}}(a_{t+k}\vert s_{t+k})P(s_{t+k+1}\vert s_{t+k},a_{t+k}).
@@ -214,31 +214,32 @@ where $\rho$ represents the marginal distribution over states and actions. The f
 
 \subsection{Model Predictive Control}
 
-Classical control theory conventionally state space is noted with $\mathcal{X}$, action space is referred to as control space and noted with $\mathcal{U}$ and the reward function is the equivalent of the cost function $\mathcal{X}$ (it is possible to set $\mathcal{C}(\cdot,\cdot)=-\mathcal{R}(\cdot,\cdot)$). In the following we will stick with the notation used for the MDP. The conventional optimization problem for MPC can be written as
+In classical control theory conventionally the state space is noted with $\mathcal{X}$, action space is referred to as control space and noted with $\mathcal{U}$ and the reward function is the equivalent of the cost function $\mathcal{X}$ (it is possible to set $\mathcal{C}(\cdot,\cdot)=-\mathcal{R}(\cdot,\cdot)$). In the following we will stick with the notation used for the MDP. The conventional optimization problem for MPC can be written as
 \begin{align}
     \label{eq:mpc}
     \max \;\mathbb{E}\left[\sum\limits^N_{k=0}\mathcal{R}(s_{t+k}, a_{t+k})\right],\\
     \text{s.t.} \quad s_{t+k+1} = f(s_{t+k}, a_{t+k}),\nonumber
 \end{align}
-where the conventional cost minimization objective has been replaced with reward maximization. The main differences between \Cref{eq:rl} and \Cref{eq:mpc} are the infinite horizon used in the case of RL and the model $f$ used in MPC that represents a deterministic transition function similar to $\mathcal{P}$. MPC optimizes control based on its model, however, as discussed the model is imperfect which is the reason why a feedback-control is used for each state and optimized for a horizon of length $N$.
+where the cost minimization objective has been replaced with reward maximization. The main differences between \Cref{eq:rl} and \Cref{eq:mpc} are the: infinite horizon used in the case of RL opposed to a fixed MPC horizon and the model $f$ used in MPC as an approximation to $\mathcal{P}$. MPC optimizes control based on its model, however the model is imperfect which is the reason why a feedback-control is used for each state and optimized for a horizon of length $N$.
+
+\subsection{Task}
 
 For navigation we further simplify the problem by projecting it into 2D as the dimensions on which actions can be executed, as shown in \Cref{fig:env}.
 \begin{figure}[h]
     \centering
         \includegraphics[width=0.48\textwidth]{figs/env.png}
-    \caption{Crowd navigation environment with constant velocity crowd, using LiDAR observation(show in gray dashed line). The predicted trajectory from ProDMP is show in magenta.}
+    \caption{Crowd navigation environment with constant velocity crowd, using LiDAR observation (show in gray dashed line). The predicted trajectory from ProDMP is show in magenta.}
     \label{fig:env}
     \vspace{-2mm}
 \end{figure}
-The input can be arbitrarily complex including other social aspects from various sensors. The specific task we are interested in is local navigation with the main focus on avoiding and behaving socially towards moving and static obstacles in the environment. Exploring unknown environment or high-level logic on how to navigate between different areas of structured environments like buildings are beyond the scope of this work.
-There are multiple options to define the MDP components for the task. For the observation we might consider positions and velocities or LiDAR rays, for actions space it is possible to choose between velocity or acceleration control. Similarly, the reward function can be set arbitrarily. The transition function for the agent assumes an holonomic robot without the addition of disturbances. The transition function for other members of the crowd depends mainly on the algorithm used to model the crowd (constant velocity, ORCA \cite{berg_optimal_2011} or SFM \cite{helbing_social_1995}). The environment and the task configuration are discussed in more detail in a previous paper (reference omitted in submission version).
+The input can be arbitrarily complex including other social aspects from various sensors. The specific task we are interested in is local navigation with the main focus on avoiding and behaving socially towards moving and static obstacles in the environment. Exploring unknown environments or high-level logic on how to navigate between different areas of structured environments like buildings are beyond the scope of this work. There are multiple options to define the MDP components for the task. For the observation we might consider positions and velocities or LiDAR rays, for actions space it is possible to choose between velocity or acceleration control. Similarly, the reward function can be set arbitrarily. The transition function for the agent assumes an holonomic robot without the addition of disturbances. The transition function for other members of the crowd depends mainly on the algorithm used to model the crowd (constant velocity, ORCA \cite{berg_optimal_2011} or SFM \cite{helbing_social_1995}). The environment and the task configuration are discussed in more detail in a previous paper (reference omitted in submission version).
 % In \cite{pikuli_navigating_2025} this environment and task configuration options are discussed in more detail.
 
 \section{Method}
 
-We use and episodic-RL approach in order to predict optimal trajectories to navigate the environment and apply MPC to minimize the distance from the reference trajectory while ensuring hard constraints. The two methods work separately and it is part of the objective of the RL agent to learn a behaviour that best takes advantage of MPC.
+We use and episodic-RL approach in order to predict optimal trajectories to navigate the environment and apply MPC to minimize the distance from the reference trajectory while ensuring hard constraints. The two methods work somewhat separately and it is part of the objective of the RL agent to learn a behaviour that best takes advantage of MPC.
 
-\subsection{MPC for Navigation of a Holonomic Robot}\label{sec:repr}
+\subsection{MPC for Navigation of a Holonomic Robot}\label{sec:mpc}
 
 We assume an holonomic robot which implies straight forward dynamics from classical mechanics for the given agent position $\boldsymbol{p}_k$ at time $k$
 \begin{align}
@@ -246,7 +247,7 @@ We assume an holonomic robot which implies straight forward dynamics from classi
     \boldsymbol{p}_{k+1} = \boldsymbol{p}_k + \dot{\boldsymbol{p}}_kT + \dfrac{1}{2}T^2\ddot{\boldsymbol{p}}_k &= \boldsymbol{p}_k + \dfrac{1}{2}\dot{\boldsymbol{p}}_kT + \dfrac{1}{2}T\dot{\boldsymbol{p}}_{k+1}\\
     \text{and} \quad \dot{\boldsymbol{p}}_{k+1} = \dot{\boldsymbol{p}}+T\ddot{\boldsymbol{p}} \;& \Leftrightarrow \; \ddot{\boldsymbol{p}}=\dfrac{\dot{\boldsymbol{p}}_{k+1}-\dot{\boldsymbol{p}}_k}{T}.\nonumber
 \end{align}
-To simplify the problem and reduce the numerical complexity (especially important for MPC), we apply velocity control. We further omit the step indexes when possible to avoid clutter. It is straight forward to derive the transition matrix for a given horizon $N$ based on \Cref{eq:dynamics}
+To simplify the problem and reduce the numerical complexity (especially important for MPC), we apply velocity control. We further omit the step indexes when possible to avoid clutter. It is straight forward to derive the transition matrix for a given horizon $N$ and current step $\boldsymbol{p}_0$ based on \Cref{eq:dynamics}
 \begin{align}
     \label{eq:dynamics_horizon}
     &\quad\quad\quad\quad P=P_0+\dfrac{1}{2}T\dot{P}_0+M_{pv}\dot{P}, \quad (P=\boldsymbol{p}_{1:N}),\nonumber\\
@@ -307,29 +308,35 @@ Linear constraints can be arbitrarily added to this objective, see \Cref{tab:con
 \end{table}
 \begin{tikzpicture}[remember picture, overlay]
     \draw [rounded corners]
-        ([xshift=-12.6mm,yshift=1.5mm]upper.center) --
-        ([xshift=-4mm,yshift=1.5mm]upper.center) --
-        ([xshift=-4mm,yshift=-2mm]upper.center) --
+        ([xshift=-14.6mm,yshift=5.5mm]upper.center) --
+        ([xshift=-6mm,yshift=5.5mm]upper.center) --
+        ([xshift=-6mm,yshift=2mm]upper.center) --
         cycle;
 \end{tikzpicture}
 \begin{tikzpicture}[remember picture,overlay]
     \draw [rounded corners]
-        ([xshift=-6.3mm,yshift=-1.6mm]lower.center) --
-        ([xshift=1.9mm,yshift=-1.6mm]lower.center) --
-        ([xshift=-6.3mm,yshift=1.75mm]lower.center) --
+        ([xshift=-8.5mm,yshift=2.5mm]lower.center) --
+        ([xshift=-0.3mm,yshift=2.5mm]lower.center) --
+        ([xshift=-8.5mm,yshift=5.65mm]lower.center) --
         cycle;
 \end{tikzpicture}
 \begin{tikzpicture}[remember picture,overlay]
-    \draw let \p1=($(top)-(bottom)$),\n1={atan2(\y1,\x1)} in node[xshift=-4.6mm,rotate fit=\n1,fit=(bottom) (top),draw,rounded corners,inner sep=1.5pt]{};
+    \draw let \p1=($(top)-(bottom)$),\n1={atan2(\y1,\x1)} in node[xshift=-7.5mm,yshift=3.9mm,rotate fit=\n1,fit=(bottom) (top),draw,rounded corners,inner sep=1.5pt]{};
 \end{tikzpicture}
 \begin{tikzpicture}[remember picture,overlay]
-    \draw let \p1=($(top2)-(bottom2)$),\n1={atan2(\y1,\x1)} in node[yshift=0.5mm, xshift=-3.8mm,rotate fit=\n1,fit=(bottom2) (top2),draw,rounded corners, inner xsep=1.5pt, inner ysep=0.5pt]{};
+    \draw let \p1=($(top2)-(bottom2)$),\n1={atan2(\y1,\x1)} in node[yshift=4.4mm, xshift=-7.5mm,rotate fit=\n1,fit=(bottom2) (top2),draw,rounded corners, inner xsep=1.5pt, inner ysep=0.5pt]{};
 \end{tikzpicture}
-Crowd distance constraints use a prediction model for the future position of the crowd. We assume that the crowd holds its current velocity and increase the safety distance by the maximum distance in the error of the prediction. The maximum error will be lower than the distance covered during time-step $T$ with $v_{max}$.
+Crowd distance constraints use a prediction model for the future position of the crowd. We assume that the crowd holds its current velocity and increase the safety distance by the maximum distance in the error of the prediction. The maximum error will be lower than the distance covered during time-step $T$ with $v_{max}$, as represented in \Cref{fig:uncert}.
+\begin{figure}[t]
+    \centering
+        \resizebox{7cm}{!}{\input{schema/uncertainty.tex}}
+    \caption{Uncertainty explodes for future predictions (shown here for three steps in the future).}
+    \label{fig:uncert}
+\end{figure}
 
 \subsection{Learning Trajectories for Navigation}\label{sec:prodmp}
 
-Episode-based RL can be more advantageous then step-based RL for specific tasks. In case of non-Markovian environments, environment where atomic steps are inaccessible or when learning temporal dependencies might be ineffective. Using motion primitives implies an episode representing a task. These approach to learning is motivated biologically as it has been well studies that certain movements are directly encoded in the nervous system. ML methods to learn motion primitives were proposed using the damped spring model \cite{Schaal2006,ijspeert_dynamical_2013} and more recently \cite{paraschos_probabilistic_2013,li_prodmps_2022}
+Episode-based RL can be more advantageous then step-based RL for specific tasks. In case of non-Markovian environments, environments where atomic steps are inaccessible or when learning temporal dependencies might be ineffective. Using motion primitives implies an episode representing a task. These approach to learning is motivated biologically as it has been well studied that certain movements are directly encoded in the nervous system. ML methods that learn motion primitives were proposed using the damped spring model \cite{Schaal2006,ijspeert_dynamical_2013} and more recently extended \cite{paraschos_probabilistic_2013,li_prodmps_2022}
 \begin{equation}
     \label{eq:spring_model}
     \tau^2\ddot{y}=\alpha(\beta(g-y)-\tau\dot{y})-f,
@@ -339,19 +346,21 @@ where $g$ represents the goal, $\alpha,\beta$ are constants and $f$ is the forci
     \label{eq:forcing_term}
     f(x)=x\dfrac{\sum_i\phi_i(x)w_i}{\sum_i\phi_i(x)} \quad \text{and} \quad \phi_i(x)=\exp{\left(\dfrac{-(x-\mu_i)^2}{2\sigma_i^2}\right)}.
 \end{equation}
-The advantage of using ProDMP \cite{li_prodmps_2022} is that it combines the strengths of DMPs (smooth replanning throughout the trajectory) and ProMPs (modelling of statistical properties). In addition to that, ProDMP computes its basis functions offline $\boldsymbol{\Phi}$ instead of a costly online numerical integration as in DMP. The replanning step is set arbitrarily and it allows for a better control as newer information can be accessed by the policy.
-The Gaussian policy is used to sample a weight vector $\boldsymbol{w}\sim\mathcal{N}(\cdot\vert\boldsymbol{\mu}_{\boldsymbol{\theta}},\boldsymbol{\Sigma}_{\boldsymbol{\theta}})$ to parametrize the forcing function and this gives us a trajectory $\boldsymbol{\lambda}=y_{1:N}$ from \Cref{eq:spring_model} and \Cref{eq:forcing_term}. In our case $y_k$ is not a scalar but a vector of two dimensions representing $x$ and $y$ coordinates on a 2D plane.
+The advantage of using ProDMP \cite{li_prodmps_2022} is that it combines the strengths of DMPs (smooth replanning throughout the trajectory) and ProMPs (modelling of statistical properties and offline basis functions  computation $\boldsymbol{\Phi}$)
+% instead of a costly online numerical integration as in DMP.
+The replanning step is set arbitrarily and it allows for a better control as newer information can be accessed by the policy.
+The Gaussian policy is used to sample a weight vector $\boldsymbol{w}\sim\mathcal{N}(\cdot\vert\boldsymbol{\mu}_{\boldsymbol{\theta}},\boldsymbol{\Sigma}_{\boldsymbol{\theta}})$ to parametrize the forcing function and this gives us a trajectory $\boldsymbol{\lambda}=y_{1:N}$ using \Cref{eq:spring_model} and \Cref{eq:forcing_term}. In our case $y_k$ is not a scalar but a vector of two dimensions representing $x$ and $y$ coordinates on a 2D plane.
 
-The policy is trained using TRPL\cite{otto_differentiable_2020}, a PG-based method that implements differentiable trust-regions in order to avoid policy collapse by limiting the updates
+The policy is trained using TRPL \cite{otto_differentiable_2020}, a PG-based method that implements differentiable trust-regions in order to avoid policy collapse by limiting the updates
 \begin{align}
     \label{eq:tr_rl}
     \boldsymbol{\theta}^\star&=\argmax_{\boldsymbol{\theta}}\mathbb{E}_{(s,a)\sim p_{\boldsymbol{\theta}}(\tau)}\left[Q^{\pi_{\boldsymbol{\theta}_{old}}}(s,a)\right]\\
     &\text{s.t.}\quad D(\pi_{\boldsymbol{\theta}_{old}}, \pi_{\boldsymbol{\theta}}) < \epsilon,\quad \forall s\in\mathcal{S},
 \end{align}
-for a distance measure $D$ and constant $\epsilon$. TRPL introduces tow main advantages compared to the classically used PPO algorithm: stability w.r.t. code-level optimizations and the capacity to constrain states individually. The objective in \Cref{eq:tr_rl} is simplified by only using a Q-function, even though commonly a weighted (importance sampling) advantage function is used. The conventional actions $a$ in this case are the weights to parameterize the ProDMP.
+for a distance measure $D$ and constant $\epsilon$. TRPL introduces tow main advantages compared to the classically used PPO algorithm: stability w.r.t. code-level optimizations and the capacity to constrain states individually. The objective in \Cref{eq:tr_rl} is simplified by only using a Q-function, even though commonly a weighted (importance sampling) advantage function is used. The conventional actions $a$ in this case are the weights to parameterize the ProDMP. TRPL has shown promising results in challenging tasks using ProDMP trajectories \cite{otto_deep_2023}.
 
-We use a LiDAR representation for the obstacles around the agent the relative position of the goal. In order to include information about the movement of the crowd, we use velocities along the LiDAR rays. To complete the observation, the 2D absolute velocity of the agent is given in order to be able to accelerate and decelerate accordingly. The architecture is given in \Cref{fig:policy}
-\begin{figure}[h]
+We use a LiDAR representation for the obstacles around the agent and the relative position of the goal. In order to include information about the movement of the crowd, we use velocities along the LiDAR rays. To complete the observation, the 2D absolute velocity of the agent is given in order to be able to accelerate and decelerate accordingly. The architecture is shown in \Cref{fig:policy}
+\begin{figure}[t]
     \centering
         \resizebox{8.4cm}{!}{\input{schema/policy_net_2x1d.tex}}
     \caption{Policy architecture. Where $\boldsymbol{o}_t$ relates to the current observation of the environment and $\boldsymbol{c}_t$ the resulting constraints.}
@@ -360,12 +369,12 @@ We use a LiDAR representation for the obstacles around the agent the relative po
 
 \subsection{MPC as Safety Filter for Episode-based RL}\label{sec:const}
 
-We propose to combine both approaches by setting the reference trajectory in the MPC objective to the prediction from the ProDMP TRPL policy $P^{ref}\coloneqq \boldsymbol{\lambda}$. In reality, the length for the prediction can be much longer than the MPC horizon. Moreover, it is important to set the rate at which the policy replans the path. A high replanning period will present a problem for the policy that is unable to make correct predictions for steps far in the future. A short horizon will only increase computational cost while not introducing any jerky behaviour thanks to the properties of ProDMP. The reference trajectory is truncated for MPC and optimization is executed in a closed-loop control manner until replanning is reengaged.
+We propose to combine both approaches by setting the reference trajectory in the MPC objective to the prediction from the ProDMP TRPL policy $P^{ref}\coloneqq \boldsymbol{\lambda}$. Practically, the length for the prediction can be much longer than the MPC horizon. Moreover, it is important to set the rate at which the policy replans the path. A high replanning period will present a problem for the policy that is unable to make correct predictions for steps far in the future. A short horizon will only increase computational cost while not introducing any jerky behaviour thanks to the properties of ProDMP. The reference trajectory is truncated for MPC and optimization is executed in a closed-loop control manner until replanning is reengaged. In \Cref{algo:main}, the two stages of the policy are shown. In lines 3-6 the new trajectory is computed, in line 7 the reference trajectory for the MPC objective is set. In lines 8 and 9 the necessary matrices, vectors are updated in order to run the QP optimization with constraints, line 10.
 
-While learning should allow for a proper symbiotic relation between the two components composing the entire policy, various considerations can accelerate the learning process. This entails mainly hyperparameters like the \textit{stability coefficient} for MPC in order to encourage smooth control, the horizon $N$ for MPC, the \textit{goal scale} for ProDMP to set a suitable length for the trajectories learned.
+While learning should allow for a proper symbiotic relation between the two components composing the entire policy, various considerations can accelerate the learning process. This entails mainly hyperparameters like the \textit{stability coefficient} for MPC in order to encourage smooth control, the horizon $N$ for MPC and the \textit{goal scale} for ProDMP to set a suitable length for the trajectories learned. This is further discussed in \Cref{sec:eval}.
 
 \begin{algorithm}
-\caption{Inference of ProDMP MPC}\label{alg:two}
+\caption{Inference of ProDMP MPC}\label{algo:main}
     \KwData{Policy $\boldsymbol{\theta}$, ProDMP ($\boldsymbol{\Phi}$, $M$, $r$),\\ \hspace{8.4mm} MPC ($N, M_{pv}, M_i, b_i, d$), env $e$}
 $o_t \gets e.init()$\;
 \While{$t < e.max\_steps$}{
@@ -384,23 +393,16 @@ $o_t \gets e.init()$\;
 }
 \end{algorithm}
 
-\section{Evaluation}
+\section{Evaluation}\label{sec:eval}
 
-We evaluate our approach in three main perspectives: efficiency, safety and FRP. At the same time we compare two aspects: the improvements brought to MPC and RL when combining the two and the difference in performance to state of the art algorithms \cite{everett_collision_2021}. For the latter an evaluation benchmark is already implemented in \verb!gym-collision-avoidance!. The general setup involves an agent or multiple agents controller by the same or different policies with each a goal position. No static obstacles or walls are considered in this environment while adaptation would be trivial in our case as we use LiDAR as observation. During training and testing we make use of a crowd modeling algorithms ORCA \cite{berg_optimal_2011}. As metrics we use the \textit{return}, \textit{time to goal} and \textit{success rate} (reaching the goal) for efficiency or performance. Safety is evaluated based on \textit{collision rate} and for the gravity of the collision we use \textit{collision speed}, \textit{collision agent speed} and \textit{maximum collision intersection}. FRP is most prominent with classical constraint-based approaches like MPC so we mainly evaluate the advantages against MPC. There is no agreed upon metric to quantify the problem, we propose to use simply the number of times that the QP-solver fails to find a solution given the constraints. If a solution is not found then the last computed breaking trajectory is applied which means that the robot might stop at the end of the trajectory.
+We evaluate our approach in three main perspectives: efficiency, safety and FRP. At the same time we compare two aspects: the improvements brought to MPC and RL when combining the two and the difference in performance to the state of the art \cite{everett_collision_2021}. For the latter an evaluation benchmark is already implemented in \verb!gym-collision-avoidance!. The general setup involves an agent or multiple agents controller by the same or different policies with each a goal position. No static obstacles or walls are considered in this environment while adaptation would be trivial in our case as we use LiDAR as observation. During training and testing we make use of a crowd modeling algorithm ORCA \cite{berg_optimal_2011}. As metrics we use the \textit{return}, \textit{time to goal} and \textit{success rate} (reaching the goal) for efficiency or performance. Safety is evaluated based on \textit{collision rate} and for the gravity of the collision we use \textit{collision speed}, \textit{collision agent speed} and \textit{maximum collision intersection}. FRP is most prominent with classical constraint-based approaches like MPC so we evaluate the advantages against MPC. There is no agreed upon metric to quantify the problem, we propose to use simply the number of times that the QP-solver fails to find a solution given the constraints. If a solution is not found then the last computed breaking trajectory is applied which means that the robot might stop at the end of the trajectory.
 % using a threshold time coefficient during which the agent should not freeze, move further from the goal or oscillate `indecisively' similarly to \cite{sathyamoorthy_frozone_2020}.
 
 ProDMP was trained using the \textbf{CrowdNavigation}\footnote{\url{link/to/gca_environment}} environment. We use a time-step of $0.1s$, replanning every $2$ steps ($0.2s$) and MPC horizon of $20$ ($2s$). MPC includes in its objective a stability term in order to encourage smoother control. This is an especially important factor when implementing the intrinsic reward
 \begin{align*}
     r_i = \alpha\sum_{t}^{t+r}\left\vert\left\vert P_t - P^{ref}_t\right\vert\right\vert,
 \end{align*}
-as the MPC behaviour becomes unpredictable for ProDMP when the term is omitted. There are limitation to the effect of this term for highly jerky control from MPC. This can happen when considering uncertainty in the crowd prediction. In order to ensure passive safety, the safety distance $d$ is augmented for future positions by the maximum error in distance prediction that is related to the maximum velocity of the crowd, as shown in \Cref{fig:uncert}.
-\begin{figure}[h]
-    \centering
-        \resizebox{7cm}{!}{\input{schema/uncertainty.tex}}
-    \caption{Uncertainty explodes for future predictions (shown here for three steps in the future).}
-    \label{fig:uncert}
-\end{figure}
-While with this conservative constraint it is possible to ensure passive safety, the FRP becomes more prominent. As QP-solver \cite{goulart_clarabel_2024} is used with tolerance parameters of $10^{-5}$. Moreover, crowd-distance, velocity and acceleration constraints are removed when possible based on distance and velocity in order to lower the computational footprint. Further implementations details can be found for all components \textbf{MPCCrowdNav}\footnote{\url{link/to/environment}}, \textbf{TrustRegionProjections}\footnote{\url{link/to/rl_algorithm}}.
+as the MPC behaviour becomes unpredictable for RL when the term is omitted. There are limitation to the effect of the intrinsic component for highly jerky control from MPC. This can happen when considering uncertainty in the crowd prediction. In order to ensure passive safety, the safety distance $d$ is augmented for future positions by the maximum error in distance prediction, as discussed in \Cref{sec:mpc} and shown in \Cref{fig:uncert}. While with this conservative constraint it is possible to ensure passive safety, the FRP becomes more prominent. As QP-solver \cite{goulart_clarabel_2024} is used with tolerance parameters of $10^{-5}$. Moreover, crowd-distance, velocity and acceleration constraints are removed when possible based on distance and velocity in order to lower the computational footprint. Further implementations details can be found for all components \textbf{MPCCrowdNav}\footnote{\url{link/to/environment}}, \textbf{TrustRegionProjections}\footnote{\url{link/to/rl_algorithm}}.
 % Further implementations details can be found for all components \textbf{MPCCrowdNav}\footnote{\url{https://github.com/dhimiter49/mpc_crowd_nav}}, \textbf{TrustRegionProjections}\footnote{\url{https://github.com/dhimiter49/TrustRegionProjections}}.
 
 \subsection{Constant Velocity Crowd}
@@ -409,7 +411,7 @@ In this environment the prediction of the future position of the crowd is perfec
 
 Because of the perfect prediction of where the crowd will be, ProDMP MPC does not introduce a clear advantage in collision rate and collision speed. Both methods perform much better than RL methods on this regard, which is no surprise. Collisions still happen because of the high density of the crowd, which results in the agent finding itself in a situation where it cannot escape a collision. Some trained seeds of ProDMP MPC are able to avoid all collisions, however this comes at the cost of efficiency. In general, the collision speed and area of intersection are highly noisy, but the higher collision speed for SAC and ProDMP is notable. On the contrary, the collision intersection area is lower for this methods as the policy tries to evade the collision until the last moment while MPC based approaches will be happy to simply stop before the collision without further consideration on how sever the collision will be. At the same time, some metrics might be inversely correlated, e.g. a lower collision rate might also indicate that the remaining collision will be more sever thus less avoidable and analogously for TTG and success rate. The TTG will be lower for easier scenarios while lowering the success rate when failing more complicated scenarios.
 
-Finally, its is clear that the number of breaking instances gets lower with a lower horizon and when using learned trajectories. Going from horizon 20 to 10 reduces the breaking trajectories by almost 6\% whereas using learned trajectories reduces by almost 7\%. By far the most effective way of avoiding breaking trajectories is to reduce the horizon. This is intuitive as lowering the horizon can drastically lower the number of constraints. We dynamically change the horizon while running MPC in cases where the QP-solver does not find a solution with the default length. Up to 3 other shorter horizon are tried by reducing the horizon in half (by default it is shortened three times from 20 to 10 to 5 to 3). For a high enough deceleration speed the shortened horizon introduces no problems. Using this technique has altogether positive effects on all metrics. It is important to mention that, simply using a shorter horizon by default will have a negative effect on the ability of MPC to avoid future collisions.
+Finally, its is clear that the number of breaking instances gets lower with a lower horizon and when using learned trajectories. Going from horizon 20 to 10 reduces the breaking trajectories by almost 6\% whereas using learned trajectories reduces by almost 7\%. By far the most effective way of avoiding breaking trajectories is to reduce the horizon. This is intuitive as lowering the horizon can drastically lower the number of constraints. We dynamically change the horizon while running MPC in cases where the QP-solver does not find a solution with the default length. Up to 3 other shorter horizon are tried by reducing the horizon in half (by default it is shortened three times from 20 to 10 to 5 to 3). For a high enough deceleration speed the shortened horizon introduces no problems. Using this technique has altogether positive effects on all metrics. It is important to mention that, simply using a shorter horizon by default will have a negative effect on the ability of MPC to avoid future collisions. Based on the experiments on the constnt crowd we set a default MPC horizon of 20 (2s).
 \begin{table*}[h]
     \centering
     \caption{Algorithm comparison for constant crowd environment.}
@@ -436,7 +438,9 @@ Finally, its is clear that the number of breaking instances gets lower with a lo
 
 By using ORCA \cite{berg_optimal_2011} the crowd prediction cannot be perfect as the crowd will accelerate and decelerate towards the goal while also trying to avoid collisions. In order to make the task more difficult for the agent that we are trying to test, members modeled though ORCA will take in consideration only a fraction of the actual physical space that the agent occupies. This means that the major part of the collision avoidance task has to be undertaken by the agent itself. In practice the radius of the agents is one forth of its real size from the perspective of an ORCA agent.
 
-Because of the uncertainty in the position of the crowd, MPC performs quite poorly and it will often engage in breaking trajectories that lead to crashes as the ORCA policy will not avoid the entire physical space of the agent, see \Cref{tab:orca}. The gain in performance is clear when dropping uncertainty and assuming constant velocity however this has a negative effect in safety. In this case collisions increase even more and of course passive safety is not ensured anymore. Using ProDMP with MPC introduces some clear advantages as the percentage of breaking trajectory severely decreases. As mentioned before training ProDMP with crowd uncertainty proved to be too difficult as the control that MPC applies on top of the ProDMP trajectory gets very unsmooth. The ProDMP MPC agents shown in \Cref{tab:orca} where trained without crowd uncertainty which violates passive safety, however greatly reduces collision rate and has seemingly no negative effect on collision speed. Adding crowd uncertainty to this approach for ORCA crowd almost halves the success rate.
+Because of the uncertainty in the position of the crowd, MPC performs quite poorly and it will often engage in breaking trajectories that lead to crashes as the ORCA policy will not avoid the entire physical space of the agent, see \Cref{tab:orca}. The gain in performance is clear when dropping uncertainty and assuming constant velocity however this has a negative effect on safety while ProDMP remains more performant. In this case collisions increase even more and of course passive safety is not ensured anymore. Using ProDMP with MPC introduces some clear advantages as the percentage of breaking trajectory severely decreases. As mentioned before training ProDMP with crowd uncertainty proved to be too difficult as the control that MPC applies on top of the ProDMP trajectory gets very unsmooth. The ProDMP MPC agents shown in \Cref{tab:orca} where trained without crowd uncertainty which violates passive safety, however greatly reduces collision rate and has seemingly no negative effect on collision speed. Adding crowd uncertainty to this approach for ORCA crowd almost halves the success rate while doubling crash percentage.
+
+The behaviour of MPC was analyzed further for shorter horizons of 10 and 5 in order to evaluate if a short horizon in scenarios with high uncertainty would benefit the overall policy. In the second part of \Cref{tab:orca} we see that both efficiency and breaking trajectories get better with a shorter horizon however collision rate gets worse. When changing the horizon dynamically the trade-off gets more complex as an horizon of 10 will achieve a better success rate and TTG while an horizon of 20 will have overall a higher return and less collisions. Training ProDMP with a short horizon yields much better results in cases where crowd uncertainty is employed, however ignoring crowd uncertainty is still more efficient and arguably safer at the cost of violating passive safety.
 
 \begin{table*}[h]
     \centering
@@ -444,18 +448,37 @@ Because of the uncertainty in the position of the crowd, MPC performs quite poor
     \label{tab:orca}
     \begin{tabular}{ | c | c | c | c | c | c | c | c | c | c | c | }
     \hline
-        \makecell{Metrics}& \makecell{MPC \\ uncert} & \makecell{MPC SH \\ uncert} & \makecell{MPC SH} & \makecell{SAC} & \makecell{ProDMP} & \makecell{ProDMP MPC} &  \makecell{ProDMP MPC \\ SH} & \makecell{ProDMP MPC \\ uncert, SH}  \\
+        \makecell{Metrics}& \makecell{MPC \\ uncert} & \makecell{MPC SH \\ uncert} & \makecell{MPC SH} & \makecell{SAC} & \makecell{ProDMP} & \makecell{ProDMP MPC} &  \makecell{ProDMP MPC \\ SH} & \makecell{ProDMP MPC \\ uncert, SH} \\
     \hline
-        return $\uparrow$ & -5.4  & 1.75  & 3.65 & 1.56 $\pm$ 0.52 & \textcolor{mygreen}{\textbf{6.25}} $\pm$ 0.47 & \textcolor{lightgreen}{\textbf{4.94}} $\pm$ 0.16 & \textcolor{mygreen}{\textbf{5.03}} $\pm$ 0.16 & 2.71 $\pm$ 0.39  \\
-        TTG $\downarrow$ (s) & 7.91   & 7.73 & \textcolor{lightgreen}{\textbf{7.46}} & \textcolor{mygreen}{\textbf{6.44}} $\pm$ 0.29 & 8.3 $\pm$ 0.07 & 8.72 $\pm$ 0.07  & 8.73 $\pm$ 0.07  & 8.71 $\pm$ 0.16  \\
+        return $\uparrow$ & -5.4  & 1.75  & 3.65 & 1.56 $\pm$ 0.52 & \textcolor{mygreen}{\textbf{6.25}} $\pm$ 0.47 & \textcolor{lightgreen}{\textbf{4.94}} $\pm$ 0.16 & \textcolor{mygreen}{\textbf{5.03}} $\pm$ 0.16 & 2.71 $\pm$ 0.39\\
+        TTG $\downarrow$ (s) & 7.91   & 7.73 & \textcolor{lightgreen}{\textbf{7.46}} & \textcolor{mygreen}{\textbf{6.44}} $\pm$ 0.29 & 8.3 $\pm$ 0.07 & 8.72 $\pm$ 0.07  & 8.73 $\pm$ 0.07  & 8.71 $\pm$ 0.16 \\
         success $\uparrow$ (\%) & \textcolor{myred}{\textbf{30.3}} & \textcolor{lightgreen}{\textbf{53.5}}   & \textcolor{mygreen}{\textbf{72.8}} & 39.3 $\pm$ 1.94 & \textcolor{mygreen}{\textbf{63.54}} $\pm$ 2.09 & \textcolor{mygreen}{\textbf{61.58}} $\pm$ 3.09  & \textcolor{mygreen}{\textbf{62.0}} $\pm$ 3.14  & \textcolor{myred}{\textbf{32.82}} $\pm$ 1.08 \\
     \hline
-        col. $\downarrow$ (\%) & \textcolor{myred}{\textbf{22.1}} & \textcolor{myred}{\textbf{16.9}}   & \textcolor{myred}{\textbf{23.8}} & \textcolor{myred}{\textbf{19.6}} $\pm$ 4.38 & \textcolor{myred}{\textbf{12.86}} $\pm$ 1.47 & \textcolor{lightgreen}{\textbf{2.08}} $\pm$ 0.38  & \textcolor{mygreen}{\textbf{1.66}} $\pm$ 0.33  & \textcolor{lightgreen}{\textbf{3.32}} $\pm$ 0.43   \\
-        $\vert\vert\dot{p}-\dot{p}_c\vert\vert\downarrow$ (m/s) & 1.27 & 1.26 & \textcolor{mygreen}{\textbf{1.04}} & \textcolor{myred}{\textbf{1.74}} $\pm$ 0.08 & \textcolor{mygreen}{\textbf{1.06}} $\pm$ 0.04 & 1.15 $\pm$ 0.09  & \textcolor{mygreen}{\textbf{1.1}} $\pm$ 0.08  & 1.2 $\pm$ 0.02  \\
-        $\vert\vert\dot{p}\vert\vert$ $\downarrow$ (m/s) & \textcolor{mygreen}{\textbf{0.0}} & \textcolor{mygreen}{\textbf{0.0}} & \textcolor{myred}{\textbf{0.64}} & \textcolor{myred}{\textbf{0.94}} $\pm$ 0.02 & \textcolor{myred}{\textbf{0.98}} $\pm$ 0.01 & \textcolor{myred}{\textbf{0.69}} $\pm$ 0.05  & \textcolor{myred}{\textbf{0.67}} $\pm$ 0.04  & \textcolor{mygreen}{\textbf{0.0}} $\pm$ 0.0  \\
-        col. area $\downarrow$ (m$^2$) & 5.86 & 6.38 & 5.53 & 7.89 $\pm$ 0.9 & 7.58 $\pm$ 0.83 & 3.83 $\pm$ 0.69  & \textcolor{mygreen}{\textbf{2.56}} $\pm$ 1.71  & 6.96 $\pm$ 0.36  \\
+        col. $\downarrow$ (\%) & \textcolor{myred}{\textbf{22.1}} & \textcolor{myred}{\textbf{16.9}}   & \textcolor{myred}{\textbf{23.8}} & \textcolor{myred}{\textbf{19.6}} $\pm$ 4.38 & \textcolor{myred}{\textbf{12.86}} $\pm$ 1.47 & \textcolor{lightgreen}{\textbf{2.08}} $\pm$ 0.38  & \textcolor{mygreen}{\textbf{1.66}} $\pm$ 0.33  & \textcolor{lightgreen}{\textbf{3.32}} $\pm$ 0.43 \\
+        $\vert\vert\dot{p}-\dot{p}_c\vert\vert\downarrow$ (m/s) & 1.27 & 1.26 & \textcolor{mygreen}{\textbf{1.04}} & \textcolor{myred}{\textbf{1.74}} $\pm$ 0.08 & \textcolor{mygreen}{\textbf{1.06}} $\pm$ 0.04 & 1.15 $\pm$ 0.09  & \textcolor{mygreen}{\textbf{1.1}} $\pm$ 0.08  & 1.2 $\pm$ 0.02 \\
+        $\vert\vert\dot{p}\vert\vert$ $\downarrow$ (m/s) & \textcolor{mygreen}{\textbf{0.0}} & \textcolor{mygreen}{\textbf{0.0}} & \textcolor{myred}{\textbf{0.64}} & \textcolor{myred}{\textbf{0.94}} $\pm$ 0.02 & \textcolor{myred}{\textbf{0.98}} $\pm$ 0.01 & \textcolor{myred}{\textbf{0.69}} $\pm$ 0.05  & \textcolor{myred}{\textbf{0.67}} $\pm$ 0.04  & \textcolor{mygreen}{\textbf{0.0}} $\pm$ 0.0 \\
+        col. area $\downarrow$ (m$^2$) & 5.86 & 6.38 & 5.53 & 7.89 $\pm$ 0.9 & 7.58 $\pm$ 0.83 & 3.83 $\pm$ 0.69  & \textcolor{mygreen}{\textbf{2.56}} $\pm$ 1.71  & 6.96 $\pm$ 0.36 \\
     \hline
         breaking $\downarrow$ (\%)& \textcolor{myred}{\textbf{162.2}} & 20.6 & 12.5 & - & - & 10.28 $\pm$ 0.92  & \textcolor{mygreen}{\textbf{0.74}} $\pm$ 0.23  & 4.22 $\pm$ 0.48 \\
+    \hline
+    \end{tabular}
+
+    \vspace{2mm}
+
+    \begin{tabular}{ | c | c | c | c | c | c | }
+    \hline
+        \makecell{Metrics} & \makecell{MPC \\ uncert \\ $N=10$} & \makecell{MPC SH \\ uncert \\ $N=10$} & \makecell{MPC \\ uncert \\ $N=5$} &  \makecell{ProDMP MPC \\ uncert \\ SH, $N=10$} & \makecell{ProDMP MPC \\ uncert \\ SH, $N=5$} \\
+    \hline
+        return $\uparrow$ & -1.79 & 1.2 & -0.82 & 4.31 $\pm$ 0.37 & 4.56 $\pm$ 0.22 \\
+        TTG $\downarrow$ (s) & 7.75 & 7.64 & 7.68 & 8.38 $\pm$ 0.08 & 8.35 $\pm$ 0.13 \\
+        success $\uparrow$ (\%) & 47.9 & 57.7 & 53.9 & 49.64 $\pm$ 1.72 & 55.16 $\pm$ 2.15 \\
+    \hline
+        col. $\downarrow$ (\%) & \textcolor{myred}{\textbf{24.4}} & \textcolor{myred}{\textbf{19.5}} & \textcolor{myred}{\textbf{29.5}} & 4.86 $\pm$ 0.59 & \textcolor{myred}{\textbf{10.18}} $\pm$ 0.42 \\
+        $\vert\vert\dot{p}-\dot{p}_c\vert\vert\downarrow$ (m/s) & 1.3 & 1.24 & 1.31 & 1.21 $\pm$ 0.06 & 1.23 $\pm$ 0.02 \\
+        $\vert\vert\dot{p}\vert\vert$ $\downarrow$ (m/s) & \textcolor{mygreen}{\textbf{0.0}} & \textcolor{mygreen}{\textbf{0.0}} &  \textcolor{mygreen}{\textbf{0.0}} & \textcolor{mygreen}{\textbf{0.0}} $\pm$ 0.0 & \textcolor{mygreen}{\textbf{0.0}} $\pm$ 0.0\\
+        col. area $\downarrow$ (m$^2$) & 5.04 & 6.73 & 5.13 &  7.57 $\pm$ 0.75 & 7.52 $\pm$ 0.51 \\
+    \hline
+        breaking $\downarrow$ (\%) & 67.6 & 22.2 & 53.5 & 5.63 $\pm$ 0.62 & 10.42 $\pm$ 0.58 \\
     \hline
     \end{tabular}
 \end{table*}
@@ -467,7 +490,7 @@ We use Gym-collision-avoidance mainly to compare with the GA3C-CADRL algorithm. 
 The advantage of MPC is clear in this environment as all other learning approaches fail to achieve zero collisions. Interestingly, ProDMP MPC trained with ORCA and without uncertainty does not ensure theoretically no collisions, however in this test case it never collides with itself. The reduction in breaking instances is expected when using uncertainty to model crowd safety and it increase with relaxing this uncertainty is expected as the modeling will make more often mistakes on the correct boundaries or where the agent could possibly be in the future. Again in this case the number of breaking instances is reduced using ProDMP.
 
 TODO: Comparing MPC, ProDMP MPC, GA3C-CADRL, ProDMP, MPC relaxucnert, ORCA all in one experiment
-TODO if enough time: Train ProDMP with itself (still issues with the code)
+TODO if enough time: Train ProDMP with itself (will not be possible)
 
 \begin{table*}[h]
     \centering
@@ -482,8 +505,8 @@ TODO if enough time: Train ProDMP with itself (still issues with the code)
         success $\uparrow$ (\%) & \textcolor{mygreen}{\textbf{99.84}} & 47.21 & \textcolor{lightgreen}{\textbf{94.84}} & \textcolor{lightgreen}{\textbf{97.68}} & \textcolor{myred}{\textbf{47.47}} & 80.21 & 81.95 & \textcolor{myred}{\textbf{45.47}} \\
     \hline
         col. $\downarrow$ (\%) & \textcolor{lightgreen}{\textbf{0.04}} & \textcolor{myred}{\textbf{50.15}} & \textcolor{mygreen}{\textbf{0}} & \textcolor{mygreen}{\textbf{0}} & 20.01 & \textcolor{lightgreen}{\textbf{0.03}} & \textcolor{mygreen}{\textbf{0}} & \textcolor{mygreen}{\textbf{0}} \\
-        $\vert\vert\dot{p} - \dot{p]_c}\vert\vert$ $\downarrow$ (m/s) & \textcolor{myred}{\textbf{1}} & 0.87 & \textcolor{mygreen}{\textbf{0}} & \textcolor{mygreen}{\textbf{0}} & \textcolor{myred}{\textbf{1.50}} & 1 & \textcolor{mygreen}{\textbf{0}} & \textcolor{mygreen}{\textbf{0}}\\
-        $\vert\vert\dot{p}\vert\vert$ $\downarrow$ (m/s) & \textcolor{myred}{\textbf{1}} & 0.77 & \textcolor{mygreen}{\textbf{0}} & \textcolor{mygreen}{\textbf{0}} & \textcolor{myred}{\textbf{0.96}} & 1 & \textcolor{mygreen}{\textbf{0}} & \textcolor{mygreen}{\textbf{0}} \\
+        $\vert\vert\dot{p} - \dot{p_c}\vert\vert$ $\downarrow$ (m/s) & \textcolor{myred}{\textbf{1}} & 0.87 & \textcolor{mygreen}{\textbf{0}} & \textcolor{mygreen}{\textbf{0}} & \textcolor{myred}{\textbf{1.50}} & \textcolor{myred}{\textbf{1}} & \textcolor{mygreen}{\textbf{0}} & \textcolor{mygreen}{\textbf{0}}\\
+        $\vert\vert\dot{p}\vert\vert$ $\downarrow$ (m/s) & \textcolor{myred}{\textbf{1}} & 0.77 & \textcolor{mygreen}{\textbf{0}} & \textcolor{mygreen}{\textbf{0}} & \textcolor{myred}{\textbf{0.96}} & \textcolor{myred}{\textbf{1}} & \textcolor{mygreen}{\textbf{0}} & \textcolor{mygreen}{\textbf{0}} \\
     \hline
         breaking $\downarrow$ (\%) & - & 54.84 & 19.6 & 33.46 & - & - & \textcolor{mygreen}{\textbf{0}} & 3.81\\
     \hline
@@ -491,13 +514,13 @@ TODO if enough time: Train ProDMP with itself (still issues with the code)
 \end{table*}
 
 \section{Discussion \& Conclusion}\label{sec:conclusion}
-We introduce a new approach to combine MPC and learning through the use of a episodic-RL algorithm ProDMP trained using TRPL, a on-policy RL method. Instead of using a crowd uninformed objective that aims to go directly to the goal through a straight line we use trajectories parametrized through ProDMP in order to incorporate the infinite-horizon objective learned through RL. In the evaluation we consider different degrees of complexity for the navigation task. A constant moving crowd can be easily predicted and is more easily adaptable to the MPC framework, however even in this case learning can introduce advantages as it might better avoid deadlock situations in the future. When using ORCA to model the crowd it is necessary to introduce uncertainty in the future position of the crowd. This will make the FRP more eminent. In fact, in this scenario MPC performs really poorly and it can only be improved marginally by relaxing the uncertainty or shortening the horizon. ProDMP MPC introduces a clear advantage in this case.
+We introduce a new approach to combine MPC and learning through the use of a episodic-RL algorithm ProDMP trained using TRPL, an on-policy RL method. Instead of using a crowd uninformed objective that aims to go directly to the goal through a straight line we use trajectories parametrized through ProDMP in order to incorporate the infinite-horizon objective learned through RL. In the evaluation we consider different degrees of complexity for the navigation task. A constant moving crowd can be easily predicted and is more easily adaptable to the MPC framework, however even in this case learning can introduce advantages as it might better avoid deadlock situations in the future. When using ORCA to model the crowd it is necessary to introduce uncertainty in the future position of the crowd. This will make the FRP more eminent. In fact, in this scenario MPC performs really poorly and it can only be improved marginally by relaxing the uncertainty or shortening the horizon. ProDMP MPC introduces a clear advantage in this case.
 
-In the Gym-collision-avoidance environment however it was made abundantly clear that without joint-collision avoidance it is difficult to compete with pure learning approaches like \cite{everett_collision_2021}. The main reason for this is the FRP for high-density crowd that results in an explosion of constraint. Ignoring the discrepancies in the evaluating environment which is not the same environment and task used to train ProDMP MPC it still clear that there are limitations to forcing passive safety. Relaxing the constraints can leas to more efficient policies, however the main caveat in this scenarios is that the agent should be able to stop quickly enough.
+In the Gym-collision-avoidance environment however it was made abundantly clear that without joint-collision avoidance it is difficult to compete with pure learning approaches like \cite{everett_collision_2021}. The main reason for this is the FRP for high-density crowd that results in an explosion of constraint. Ignoring the discrepancies in the evaluating environment which is not the same environment and task used to train ProDMP MPC it still clear that there are limitations to forcing passive safety. Relaxing the constraints can lead to more efficient policies, however the main caveat in this scenarios is that the agent should be able to stop quickly enough.
 
 \section{Future Work}
 
-We see the use of classic control as integral to the future of robotics as it can offer the ground for safety while also offering a easier and more explainable implementation in the real world. In future work we will try to relax the strong theoretical conditions for passive safety by tuning the horizon lengths accordingly, using predictive systems as ground truths to avoid explosion of uncertainty and comparing to sampling-based MPC approaches. Finally, we aim to improve our current approach by incorporating more complex learning architectures like Transformers and diffusion-models.
+We see the use of classic control as integral to the future of robotics as it can offer the basis for safety while also facilitating an easier and more explainable implementation in the real world. In future work we will try to relax the strong theoretical conditions for passive safety by tuning the horizon lengths accordingly, using predictive systems as ground truths to avoid explosion of uncertainty and comparing to sampling-based MPC approaches. Finally, we aim to improve our current approach by incorporating more complex learning architectures like Transformers and diffusion-models.
 
 \bibliographystyle{IEEEtran.bst} % We choose the "IEEetran" reference style
 \bibliography{references.bib} % Entries are in the references.bib file
