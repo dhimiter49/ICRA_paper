@@ -212,7 +212,7 @@ FUNCTION {bbl.standard}{ "Std." }
 FUNCTION {bbl.techrep}{ "Tech. Rep." }
 FUNCTION {bbl.mthesis}{ "Master's thesis" }
 FUNCTION {bbl.phdthesis}{ "Ph.D. dissertation" }
-FUNCTION {bbl.urlprefix}{ "[Online]. Available:" }
+% FUNCTION {bbl.urlprefix}{ "[Online]. Available:" }
 FUNCTION {bbl.st}{ "st" }
 FUNCTION {bbl.nd}{ "nd" }
 FUNCTION {bbl.rd}{ "rd" }
@@ -1033,7 +1033,8 @@ FUNCTION {begin.bib}
   if$
   "\begin{thebibliography}{"  longest.label  * "}" *
   write$ newline$
-  "\providecommand{\url}[1]{#1}"
+  % "\providecommand{\url}[1]{#1}"
+  "\def\url#1{}"
   write$ newline$
   "\csname url@rmstyle\endcsname"
   write$ newline$
