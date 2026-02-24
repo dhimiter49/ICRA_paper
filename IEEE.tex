@@ -25,9 +25,14 @@
 \usepackage{tikz}
 \usepackage{makecell}
 \usepackage{adjustbox}
+\usepackage{pgfplots}
+\usepackage{pgf}
 \usetikzlibrary{shapes,arrows,tikzmark,calc,fit}
+\usepackage{tabularx}
 
 \usetikzlibrary{arrows.meta,fit}
+
+\def\mathdefault#1{#1}
 
 % Colors
 \definecolor{OliveGreen}{RGB}{0,200,25}
@@ -53,6 +58,7 @@
 \DeclareMathOperator*{\argmin}{arg\!min}
 \newcommand{\pluseq}{\mathrel{+}=}
 \DeclareMathOperator{\sign}{sign}
+\DeclareMathOperator{\sgn}{sgn}
 
 \tikzset{block/.style={draw, fill=blue!10, rectangle, thick,
 minimum height=3em, minimum width=2em},
@@ -177,102 +183,132 @@ triangle/.style={draw,fill=red!20,regular polygon,regular polygon sides=3}}
 \pagenumbering{gobble}
 
 \begin{abstract}
-    Current research on robot navigation focuses on two main challenges: safety and collaborative behaviour. While recent deep learning approaches achieve remarkable results they often neglect any safety guarantees. We employ passive safety in order to ensure at least some level of constraint. This implies using classical control based on model predictive control (MPC) which introduces other challenges, e.g. freezing robot problem (FRP) and in general worse collaboration with the crowd. Collaboration is an all encompassing term, however it relates closely to the broader topic of human robot interaction (HRI) and for navigation more specifically we desire comfortable, legible, polite, abiding to social norms, agent understanding, proactive and context appropriate behaviour \cite{francis_principles_2025}. We adapt to the MPC-objective a learned feedback through Reinforcement Learning (RL), serving to better take into consideration the dense and dynamic crowd. The objective of our work is to explore a framework where it is possible to ensure safety guarantees while integrating the desirable social pre-requisites. We argue that it is possible to achieve this by combining classical, constraint-adherent methods as MPC to learning approaches in order to efficiently be safe in social scenarios. We evaluate the effects this hybrid approach has on efficiency, safety and FRP while comparing to SOTA algorithms.
+    Current research on robot navigation focuses on two main challenges: safety and collaborative behaviour. While recent deep learning approaches achieve remarkable results they often neglect any safety guarantees. We employ passive safety in order to ensure at least some level of constraint. This implies using classical control based on model predictive control (MPC) which introduces other challenges, e.g. freezing robot problem (FRP) and in general worse collaboration with the crowd. Collaboration is an all encompassing term, however it relates closely to the broader topic of human robot interaction (HRI) and for navigation more specifically we desire comfortable, legible, polite, abiding to social norms, agent understanding, proactive and context appropriate behaviour \cite{francis_principles_2025}. We adapt to the MPC-objective a learned feedback through Reinforcement Learning (RL), serving to better take into consideration the dense and dynamic crowd. The objective of our work is to explore a framework where it is possible to ensure safety guarantees while integrating the desirable collaborative behaviour. We argue that it is possible to achieve this by combining classical, constraint-adherent methods as MPC to learning approaches in order to efficiently be safe in social scenarios. We evaluate the effects this hybrid approach has on efficiency, safety and FRP while comparing to SOTA algorithms.
 \end{abstract}
 
 
 \section{INTRODUCTION}\label{sec:intro}
-    The robot navigation problem is gaining increasing traction as newer and better technologies allow for robots to share the environment with humans. In \cite{fraichard_short_2007} three safety criteria are proposed to address the task, a robot should consider its own dynamics, the future behaviour of the objects in the environment and do this over a long enough time-horizon. Usually, the dynamics of the robot are well modeled and the horizon can be set appropriately, however predicting the future is far from trivial which makes the problem NP-hard (formalized for motion planning \cite{demaine_a_general,solovey_complexity}). In case a perfect prediction were possible, then a path finding algorithm would suffice. Instead the common approaches nowadays are: geometric methods i.e. dynamic window approach (DWA) \cite{fox_dynamic_1997, patel_dwa-rl_2021} or inevitable collision states (ICS) \cite{fraichard_inevitable_2003}, model predictive control (MPC) or receding horizon control (RHC) \cite{schouwenaars_receding_2004,bohorquez_safe_2016,dorante_design_2018,ciocca_balance_2020} and finally learning approaches \cite{alahi_2016_CVPR,everett_collision_2021,han_deep_2022,liu_intention_2023,moder_navigating_2024}. Research focuses on the latter two as DWA presented limitations \cite{rhino,minerva}.
+    The robot navigation problem is gaining increasing traction as newer and better technologies allow for robots to share the environment with humans. In \cite{fraichard_short_2007} three safety criteria are proposed to address the task, a robot should consider its own dynamics, the future behaviour of the objects in the environment and do this over a long enough time-horizon. Usually, the dynamics of the robot are well modeled and the horizon can be set appropriately, however predicting the future is far from trivial which makes the problem NP-hard (formalized for motion planning \cite{demaine_a_general}). In case a perfect prediction were possible, then a path finding algorithm would suffice. Instead the common approaches nowadays are: geometric methods i.e. dynamic window approach (DWA) \cite{fox_dynamic_1997} or inevitable collision states (ICS) \cite{fraichard_inevitable_2003}, model predictive control (MPC) or receding horizon control (RHC) \cite{schouwenaars_receding_2004,bohorquez_safe_2016,ciocca_balance_2020} and finally learning approaches \cite{alahi_2016_CVPR,everett_collision_2021,liu_intention_2023,moder_navigating_2024}. Research focuses on the latter two as DWA presented limitations \cite{rhino}.
 
-    MPC models the environment and sets a fixed length horizon in order to optimize over its objective. This is done iteratively in a feedback control scheme where it is possible to define linear constraints for a convex objective. Real-time control is possible using broadly available hardware and fast QP-solvers \cite{osqp,goulart_clarabel_2024,bambade2025tro}. Through the constraints it is possible to ensure \textit{passive safety} \cite{macek_towards_2009} which allows only collisions where the robot will be static. However, MPC can be too constraining and results in the freezing robot problem (FRP) \cite{trautman_unfreezing_2010}. In order to alleviate this problem, a perfect model of the future is not enough. In dense crowds, it is necessary to implement joint-collision-avoidance, so that the robot takes action under the assumption that other members of the crowd will also try to avoid collisions, as motivated in \cite{trautman_unfreezing_2010}.
+    % omitted literature solovey_complexity, patel_dwa-rl_2021, dorante_design_2018, minerva, han_deep_2022
 
-    We address the problem by learning trajectories that comply with the state and future intent of the crowd. This has the same effect as \cite{sathyamoorthy_frozone_2020} of avoiding potential states where FRP could happen, however we do not explicitly define control mechanics to evade freezing zones. We hypothesize that through joint learning of RL with an MPC controller it is feasible to combine the strengths of both approaches. From the one side we learn efficient, social trajectories thanks to RL and on the other hand it is possible to guarantee passive safety. Moreover, using an intrinsic reward, the RL policy will better learn to adapt to the safety maneuvers of MPC.
+    MPC models the environment and sets a fixed length horizon in order to optimize over its objective. This is done iteratively in a feedback control scheme where it is possible to define linear constraints for a convex objective. Real-time control is possible using broadly available hardware and fast QP-solvers \cite{goulart_clarabel_2024}. Through the constraints it is possible to ensure \textit{passive safety} \cite{macek_towards_2009} which allows only collisions where the robot will be static. However, MPC can be too constraining and results in the freezing robot problem (FRP) \cite{trautman_unfreezing_2010}. In order to alleviate this problem, a perfect model of the future is not enough. In dense crowds, it is necessary to implement joint-collision-avoidance, so that the robot takes action under the assumption that other members of the crowd will also try to avoid collisions, as motivated in \cite{trautman_unfreezing_2010}.
 
-    Our work is inspired by the current attempt to unify MPC and RL \cite{recht_tour_2018,reiter_synthesis_2025}. We make use of the same theory as papers on safety filters for learning \cite{tearle_predictive_2021,brito_where_2021,wabersich_predictive_2022,strawn_conformal_2023,kicki_bridging_2024}. One of our key differences is learning an optimal trajectory for the robot to follow, which better incorporates infinite-horizon information learned through episodic RL. Complementary, MPC serves as a safety filter over the RL controller that can potentially make small mistakes in its prediction.
+    % omitted literature osqp, bambade2025tro
+
+    We address the problem by learning trajectories that comply with the state and future intent of the crowd. This has the same effect as \cite{sathyamoorthy_frozone_2020} of avoiding potential states where FRP may happen, however we do not explicitly define control mechanics to evade freezing zones. We hypothesize that through joint learning of RL with an MPC controller it is feasible to combine the strengths of both approaches. From the one side we learn efficient, amenable trajectories thanks to RL and on the other hand it is possible to guarantee passive safety. Moreover, using an intrinsic reward, the RL policy will better learn to adapt to the safety maneuvers of MPC.
+
+    Our work is inspired by the current attempt to unify MPC and RL \cite{reiter_synthesis_2025}. We make use of the same theory as papers on safety filters for learning \cite{tearle_predictive_2021,wabersich_predictive_2022,kicki_bridging_2024}. One of our key differences is learning an optimal trajectory for the robot to follow, which better incorporates infinite-horizon information learned through episodic RL. Complementary, MPC serves as a safety filter over the RL controller that can potentially make small mistakes in its prediction.
+
+    % omitted literature recht_tour_2018, brito_where_2021, strawn_conformal_2023
 
     We list as our main contribution a novel method to combine classic robot navigation with learning and analyze its advantages and limitations. We are able to improve performance in key metrics like \textit{success rate} and \textit{collision rate} when enhancing MPC with RL while being bound by the explosion of constraints in dense scenarios. This implies a trade-off between better collaboration through joint-collision-avoidance and theoretical safety. The full adherence to social principles, as formalized in \cite{francis_principles_2025}, is beyond the scope of this paper while it remains an objective for our future work.
-
-    % \begin{itemize}
-    %     \item Issue: we are not explicitly doing joint-collision-avoidance (main issue with FRP in dense scenarios), I could just remake this point in the end, as a takeaway, we cannot reduce FRP without loosing some guarantees
-    %     \item Approach is very similar to \cite{kicki_bridging_2024}, not sure exactly how to address this
-    % \end{itemize}
 
 
 \section{PROBLEM FORMULATION}\label{sec:problem}
 
-The navigation problem can be mathematically formulated as a \textit{\acrlong*{mdp}} (\acrshort*{mdp}) defined by the tuple $(\mathcal{S,A,P,R})$, where $\mathcal{S}$, $\mathcal{A}$ are the \textit{state space} and \textit{action space} respectively, $\mathcal{P}(s,a,s')$ is the \textit{transition probability} from state $s\in\mathcal{S}$ to state $s'\in\mathcal{S}$ via action $a\in\mathcal{A}$ and $\mathcal{R}:\mathcal{S}\times\mathcal{A}\rightarrow \mathbb{R}$ is the \textit{reward function}. The manner in which the components of the \acrshort*{mdp} are defined, describe a specific task and have a major effect on the complexity of the problem. Generally, the navigation task involves an agent moving through a crowd with a given goal position. Additionally to the goal position, the full state is described by the position, velocity, shape and orientation of each obstacle and the agent itself. In this paper we use the term \textit{agent} and \textit{robot} interchangeably and the term \textit{crowd} to refer to people in the environment.
+The navigation problem can be mathematically formulated as a \textit{\acrlong*{mdp}} (\acrshort*{mdp}) defined by the tuple $(\mathcal{S,A,P,R})$, where $\mathcal{S}$, $\mathcal{A}$ are the \textit{state space} and \textit{action space} respectively, $\mathcal{P}(s,a,s')$ is the \textit{transition probability} from state $s\in\mathcal{S}$ to state $s'\in\mathcal{S}$ via action $a\in\mathcal{A}$ and $\mathcal{R}:\mathcal{S}\times\mathcal{A}\rightarrow \mathbb{R}$ is the \textit{reward function}. The manner in which the components of the \acrshort*{mdp} are defined, describe a specific task. Generally, the navigation task involves an agent moving through a crowd with a given goal position $\boldsymbol{p}_g$. Additionally to $\boldsymbol{p}_g$, the full state is described by the position, velocity, shape and orientation of each obstacle and the agent itself. In this paper we use the term \textit{agent} and \textit{robot} interchangeably and the term \textit{crowd} to refer to people in the environment.
 
 \subsection{Reinforcement Learning}
 
-Reinforcement learning draws inspiration from the natural learning process of positive and negative reinforcement in animals. Based on biological and social needs, animals try to increase positive stimulus and decrease negative ones. I.e., avoiding climbing trees or showing more prudence after a bad fall and look for more blueberries after discovering a pleasurable taste. Artificially, it is possible to mimic learning using a feedback signal ($\mathcal{R}$) that will represent how well we are doing w.r.t. the task specified by the MDP. An environment is necessary to train the agent through trial and error by gathering data as opposed to supervised learning approaches where an existing dataset is needed. RL has been shown to surpass humans in various task, most commonly the Atari 2600 games are used as benchmark \cite{mnih_human-level_2015}. For the navigation problem it is difficult to simulate a realistic crowd, however we choose RL over supervised methods like imitation learning (IL) since a dataset with ground truth values of how a robot must behave in the presence of humans does not exist. Human navigation datasets can be used for imitation learning in order to learn initial policies, but we leave this for future work.
+RL draws inspiration from the natural learning process of positive and negative reinforcement in animals. Based on biological and social needs, animals try to increase positive stimulus and decrease negative ones. I.e., avoiding climbing trees after a bad fall and look for more blueberries after discovering a pleasurable taste. Artificially, a feedback signal ($\mathcal{R}$) mimics the stimulus and represents how well the agent is doing w.r.t. a task. An environment is necessary to train the agent through trial and error by gathering data as opposed to supervised learning where an existing dataset is needed. RL has been shown to surpass humans in various task, most commonly the Atari 2600 games are used as benchmark \cite{mnih_human-level_2015}.
 
 The objective in RL is to solve the MDP by maximizing the expected return over time at each time-step $t$
 \begin{equation}
     \label{eq:rl}
     G_t=\sum\limits^\infty_{k=0}\gamma^k\mathbb{E}_{(s_{t+k}, a_{t+k})\sim\rho} \mathcal{R}(s_{t+k}, a_{t+k}),
 \end{equation}
-where $\rho$ represents the state-actions marginal distribution. The factor $\gamma$ ($0\leq\gamma < 1$) is an additional parameter of the MDP in order to limit $G_t$ assuming that $\mathcal{R}$ is bound. The majority of RL algorithms use a value function $V(s)$ or $Q(s,a)$ (VF) (referred to also as critic) to evaluate the objective and steer the learning process. The VF estimates how much reward over time is expected starting from a given state or state-action pair. The most direct way to solve the problem and train an agent is policy gradient (PG). PG calculates a gradient towards the objective. The policy is implemented as a parameterized Gaussian distribution $\pi_{\boldsymbol{\theta}}(a\vert s)=\mathcal{N}(a\vert \mu_{\boldsymbol{\theta}}(s), \Sigma_{\boldsymbol{\theta}}(s))$ and it is also used to explore the environment. The objective can be written in terms of the parameters $\boldsymbol{\theta}$ that need to be learned
+where $\rho$ represents the state-actions marginal distribution. The factor $\gamma$ ($0\leq\gamma < 1$) is an additional MDP parameter that limits $G_t$ assuming that $\mathcal{R}$ is bound. The majority of RL algorithms use a value function $V(s)$ or $Q(s,a)$ (VF) (referred to also as critic) to evaluate the objective and steer the learning. The VF estimates how much reward over time is expected starting from a given state or state-action pair. The most direct way to solve the problem and train an agent is policy gradient (PG). PG calculates a gradient towards the objective. The policy is implemented as a parameterized Gaussian distribution $\pi_{\boldsymbol{\theta}}(a\vert s)=\mathcal{N}(a\vert \mu_{\boldsymbol{\theta}}(s), \Sigma_{\boldsymbol{\theta}}(s))$ and it is also used to explore the environment. The objective can be written in terms of the parameters $\boldsymbol{\theta}$ to be learned
 \begin{align}
     \label{eq:policy_obj}
     G_t(\boldsymbol{\theta})&=\mathbb{E}_{\tau\sim p_{\boldsymbol{\theta}}(\tau)}\left[ \sum\limits^\infty_{k=0}\gamma^k \mathcal{R}(s_{t+k}, a_{t+k})\right] \text{with}, \\
     p_{\boldsymbol{\theta}}(\tau)=p&(s_0)\prod\limits^\infty_{k=0}\pi_{\boldsymbol{\theta}}(a_{t+k}\vert s_{t+k})P(s_{t+k+1}\vert s_{t+k},a_{t+k}). \nonumber
 \end{align}
 Using Mont-Carlo estimate with $L$ samples and the log-ratio trick the gradient over the policy is computed
-\begin{align*}
+\begin{align}
+    \label{eq:policy_update}
     \nabla_{\boldsymbol{\theta}} G(\boldsymbol{\theta})\approx \dfrac{1}{L}\sum\limits_i^L &\left(\sum\limits_{t} \nabla_{\boldsymbol{\theta}} \log(\pi_{\boldsymbol{\theta}}(a_{i,t}\vert s_{i,t}))\right) \\
-    & \underbrace{\left(\sum\limits_{t}\gamma^t \mathcal{R}(s_{i,t}, a_{i,t})\right)}_{\text{approx. by} \; V^{\pi_{\boldsymbol{\theta}_{old}}} \; \text{or} \; Q^{\pi_{\boldsymbol{\theta}_{old}}}},\\
-    \text{from} \; \nabla_{\boldsymbol{\theta}}\log p_{\boldsymbol{\theta}}&(\boldsymbol{\tau})=\dfrac{\nabla_{\boldsymbol{\theta}} p_{\boldsymbol{\theta}}(\boldsymbol{\tau})}{p_{\boldsymbol{\theta}}(\boldsymbol{\tau})} \; \text{ and \Cref{eq:policy_obj}}.
-\end{align*}
+    & \underbrace{\left(\sum\limits_{t}\gamma^t \mathcal{R}(s_{i,t}, a_{i,t})\right)}_{\text{approx. by} \; V^{\pi_{\boldsymbol{\theta}_{old}}} \; \text{or} \; Q^{\pi_{\boldsymbol{\theta}_{old}}}}, \nonumber \\
+    \text{from} \; \nabla_{\boldsymbol{\theta}}\log p_{\boldsymbol{\theta}}&(\boldsymbol{\tau})=\dfrac{\nabla_{\boldsymbol{\theta}} p_{\boldsymbol{\theta}}(\boldsymbol{\tau})}{p_{\boldsymbol{\theta}}(\boldsymbol{\tau})} \; \text{ and \Cref{eq:policy_obj}}. \nonumber
+\end{align}
 
 \subsection{Model Predictive Control}
 
-Model predictive control can be used to solve control problems similar to RL, however it uses a model of the system in order to predict its future behavior over a finite time. The application of MPC goes back 50 years and was originally used for complex industrial systems like chemical engineering in order to optimize operations and handle constraints. The theory was developed further starting from the 90' \cite{mayne_receding_1990} and now it finds a wide application in industry, robotics and the automotive sector.
+Model predictive control can be used to solve control problems similar to RL, however it uses a model of the system in order to predict its future behavior over a finite time. The application of MPC goes back 50 years and was originally used for complex industrial systems in chemical engineering to optimize operations and handle constraints. The theory was developed further starting from the 90' \cite{mayne_receding_1990} and now it finds a wide application in industry, robotics and the automotive sector.
 
 The optimization problem for MPC can be written as
-\begin{align}
+\begin{equation}
     \label{eq:mpc}
-    \max \;\mathbb{E}\left[\sum\limits^N_{k=0}\mathcal{R}(s_{t+k}, a_{t+k})\right],\\
-    \text{s.t.} \quad s_{t+k+1} = f(s_{t+k}, a_{t+k}),\nonumber
-\end{align}
-where the cost minimization objective has been replaced with reward maximization. The main differences between \Cref{eq:rl} and \Cref{eq:mpc} are the: infinite horizon used in the case of RL opposed to a fixed MPC horizon and the model $f$ used in MPC as an approximation for $\mathcal{P}$. MPC optimizes control based on its model, however the model is imperfect which is the reason why a feedback-control is used for each state and optimized for a horizon of length $N$. The solution for the horizon is computed using a QP-optimizer.
+    \max \;\mathbb{E}\left[\sum\limits^N_{k=0}\mathcal{R}(s_{t+k}, a_{t+k})\right] \; \text{s.t.} \; s_{t+k+1} = f(s_{t+k}, a_{t+k}),
+\end{equation}
+where the usual cost minimization objective has been replaced with reward maximization. The main differences between \Cref{eq:rl} and \Cref{eq:mpc} are: the infinite horizon used in RL opposed to a fixed MPC horizon and the model $f$ used in MPC as an approximation for $\mathcal{P}$. As seen in \Cref{eq:policy_update} the dynamics are unneeded to learn the policy $\pi_{\boldsymbol{\theta}}$. MPC optimizes control based on its model, however the model is imperfect which is the reason why feedback-control is used for at each step and optimized for a horizon of length $N$. The pseudo-optimal solution for the complete horizon is computed using a QP-solver.
 
 \subsection{Task}
 
-For navigation we further simplify the problem by projecting it into 2D as the dimensions on which actions can be executed, as shown in \Cref{fig:env}.
+For navigation we further simplify the problem by projecting into 2D as the dimensions on which actions can be executed, shown in \Cref{fig:env}.
 \begin{figure}[ht]
     \centering
         \includegraphics[width=0.48\textwidth]{figs/env.png}
-    \caption{Crowd navigation environment with constant velocity crowd, using LiDAR observation (show in gray dashed line). The predicted trajectory from ProDMP is show in magenta. This is the environment used for evaluation on a constant moving crowd, the agent is spawned in the middle of elongated room with a crowd consisting of 6 members spawned randomly left and right and going towards the other side of the room. The goal is spawned randomly and far from the initial agent position, the agent has 10 seconds to arrive at the goal.}
+    \caption{Evaluation environment with constant velocity crowd, using LiDAR observation (gray dashed line). The predicted trajectory from ProDMP is shown in magenta. The setup consists of the agent spawned in the middle of an elongated room with a 6 member crowd spawned randomly left and right and going towards the other side of the room. The agent has 10 seconds to arrive at a goal.}
     \label{fig:env}
     \vspace{-2mm}
 \end{figure}
-We further consider moving obstacles as circles of a fixed radius. The reasoning behind the environment and choices for the MDP components are discussed in more detail in previous work (reference omitted in submission version).
+We consider moving obstacles as circles of a fixed radius. The reasoning behind the environment and choices for the MDP components are discussed in more detail in previous work (reference omitted for submission).
 % In \cite{pikuli_navigating_2025} this environment and task configuration options are discussed in more detail.
-The specific task we are interested in is local navigation with the main focus on avoiding moving and static obstacles efficiently in the environment. Exploring unknown environments or high-level logic on how to navigate between different areas of structured environments like buildings, are beyond the scope of this work. We use LiDAR observation to gather information about the location of the obstacles, and the velocity along the LiDAR rays to perceive the velocity of the obstacles. This does not relay the full state of the system changing the task formulation to a partially observable MDP (POMDP). The agent is controlled using its velocity and it is limited to a maximum velocity ($1m/s$) and acceleration ($10m/s^2$). The reward is comprised of two main components: one for approaching and arriving at the goal and another for crowd proxemics and collisions
-\begin{align*}
-    r_{g} &= \begin{cases}
-                10, & d_g < \tau_{\textsc{p}} \land \|\dot{\boldsymbol{p}}\| < a_{\textsc{max}}T, \\
-                C_g \sign(p_g)p_g^2,
-                 & \text{otherwise},
-            \end{cases}\\
-    r_{c_j} &= \begin{cases}
-                0, & d_{c_i} > \tau_{\textsc{s}}, \\
-                -10, & d_{c_i} < 2\tau_{\textsc{p}}, \\
-                1 - \exp(C_c/d_{c_j}), & \text{otherwise},
-             \end{cases}\\
-    p_g&=d_{g,old}-d_g, \; d_g=\vert\vert\boldsymbol{p}-\boldsymbol{g}\vert\vert, \; d_{c_j}=\vert\vert \boldsymbol{p} - \boldsymbol{p}_{c_j}\vert\vert, \\
-    \tau_g \: &\text{goal threshold distance},\; \tau_s\: \text{social threshold distance},\\ \tau_p \:&\text{physical threshold distance}.
-\end{align*}
-The transition function for the agent assumes an holonomic robot without the addition of disturbances. The transition function for other members of the crowd depends mainly on the algorithm used to model the crowd (constant velocity, ORCA \cite{berg_optimal_2011} or SFM \cite{helbing_social_1995}).
+We are specifically interested in local navigation with the main focus on avoiding moving and static obstacles efficiently. Exploring unknown environments or high-level logic on how to navigate between different areas of structured environments like buildings, are beyond the scope of this work. We use LiDAR observation to gather information about the location of the obstacles, and the velocity along the LiDAR rays to perceive the velocity of the obstacles. This does not relay the full state of the system changing the formulation to a partially observable MDP (POMDP). The agent is controlled using its velocity and it is limited to a maximum velocity ($1m/s$) and acceleration ($10m/s^2$). The reward is comprised of two main components: one for the goal and another for crowd proxemics and collisions \Cref{tab:rew}.
+\begin{table}[ht]
+    \vspace{-0.2cm}
+    \centering
+    \caption{Reward function, where $p_g=d_{g,old}-d_g, \; d_g=\vert\vert\boldsymbol{p}-\boldsymbol{p}_g\vert\vert, \; d_{c_j}=\vert\vert \boldsymbol{p} - \boldsymbol{p}_{c_j}\vert\vert$ and $\tau_g, \tau_s, \tau_p$ are goal, social physical threshold distances respectively.}
+    \label{tab:rew}
+    \begin{adjustbox}{width=0.48\textwidth}
+        \begin{tabular}{ | c | c | }
+        \hline
+            $r_g$ & condition \\
+        \Xhline{2\arrayrulewidth}
+            10 & \makecell{$d_g < \tau_p \land $ \\ \vspace{1.15mm} $\|\dot{\boldsymbol{p}}\| < a_{\textsc{max}}T$}\\
+        \hline
+            $C_g \sgn(p_g)p_g^2$ & $d_g > \tau_p$\\
+        \hline
+        \end{tabular}
+        \begin{tabular}{ | c | c | }
+        \hline
+            $r_{c_j}$ & condition \\
+        \Xhline{2\arrayrulewidth}
+            0 & $d_{c_i}>\tau_s$\\
+        \hline
+            -10 & $d_{c_i}<2\tau_p$\\
+        \hline
+            $1 - e^{(C_c/d_{c_j})}$ & $2\tau_p<d_{c_j}<\tau_s$\\
+        \hline
+        \end{tabular}
+    \end{adjustbox}
+    \vspace{-0.3cm}
+\end{table}
+% \begin{align*}
+%     r_{g} &= \begin{cases}
+%                 10, & d_g < \tau_{\textsc{p}} \land \|\dot{\boldsymbol{p}}\| < a_{\textsc{max}}T, \\
+%                 C_g \sign(p_g)p_g^2,
+%                  & \text{otherwise},
+%             \end{cases}\\
+%     r_{c_j} &= \begin{cases}
+%                 0, & d_{c_i} > \tau_{\textsc{s}}, \\
+%                 -10, & d_{c_i} < 2\tau_{\textsc{p}}, \\
+%                 1 - \exp(C_c/d_{c_j}), & \text{otherwise},
+%              \end{cases}\\
+%     p_g&=d_{g,old}-d_g, \; d_g=\vert\vert\boldsymbol{p}-\boldsymbol{p}_g\vert\vert, \; d_{c_j}=\vert\vert \boldsymbol{p} - \boldsymbol{p}_{c_j}\vert\vert, \\
+%     \tau_g&, \tau_s, \tau_p \: \text{are goal, social, physical threshold distances}.
+% \end{align*}
+The transition function for the agent assumes a holonomic robot without the addition of disturbances. The transition function for other members of the crowd depends mainly on the algorithm used to model the crowd (constant velocity, ORCA \cite{berg_optimal_2011} or SFM \cite{helbing_social_1995}).
 
 
 \section{RELATED WORK}\label{sec:rel_work}
 
-Nowadays MPC and learning approaches are mainly used to develop robot navigation systems. MPC has been used for whole body control in robotics as well as navigation \cite{wieber_viability_2008,ciocca_time_2023}. More recently, data-based approaches have gained popularity with the increase in real world data and sharp boost of compute in order to power deep learning algorithms. Human navigation dataset are available and can be used to train prediction models, but in robot navigation, human trajectories do not indicate ground truths for robots. Predictive models \cite{alahi_2016_CVPR} are still used to provide addition information for control to improve navigation performance. RL is the most common learn-based control method. Different works explore the combination of different architectures to improve the feature extraction of the relations in the crowd and refine planning capabilities \cite{chen_2017,chen_crowd-robot_2019,everett_collision_2021}.
+Research on robot navigation has converged to MPC and learning-based approaches in the past decade. MPC has been used for whole body control in robotics as well as navigation \cite{wieber_viability_2008,ciocca_time_2023}. More recently, data-based approaches have gained popularity with the increase in real world data and sharp boost of compute in order to power deep learning algorithms. Human navigation dataset are available and can be used to train prediction models, but in robot navigation, human trajectories do not indicate ground truths for robots. Predictive models \cite{alahi_2016_CVPR} are still used to provide additional information for control to improve navigation performance. RL is the most common learn-based control method. Multiple works explore the combination of different architectures to improve the feature extraction of the relations in the crowd and refine planning capabilities \cite{chen_2017,chen_crowd-robot_2019,everett_collision_2021}.
 
-Increasingly, both approaches are combined in order to enhance the performance of the MPC planner. In \cite{che_efficient_2020} a model approximates humans as optimal agents and an MPC planner uses the model to generate communicative actions. \cite{brito_where_2021} enhances the MPC by learning subgoals with deep RL and \cite{xiao_motion_2022} uses a Transformer to learn the cost function for MPC. There are other approaches that combine MPC and RL but address different or similar tasks. Work from \cite{hewing_learning-based_2020,tearle_predictive_2021,mesbah_fusion_2022} focuses on using MPC as a safety filter for actions predicted from RL agents. In this work we also concentrate on safety, however propose an episode-based RL approach and apply it to navigation in order to better fuse the advantages of MPC and RL. Our solution is close to the method proposed in \cite{kicki_bridging_2024}
+Increasingly, both approaches are combined in order to enhance the performance of the MPC planner. In \cite{che_efficient_2020} a model approximates humans as optimal agents and an MPC planner uses the model to generate communicative actions. \cite{brito_where_2021} enhances MPC by learning subgoals with deep RL and \cite{xiao_motion_2022} uses a Transformer to learn the cost function for MPC. There are other approaches that combine MPC and RL but address different or similar tasks. Work from \cite{hewing_learning-based_2020,tearle_predictive_2021,mesbah_fusion_2022} focuses on using MPC as a safety filter for actions predicted from RL agents. In this work we also concentrate on safety, however propose an episode-based RL approach and apply it to navigation in order to better fuse the advantages of MPC and RL. Our solution is close to the method proposed in \cite{kicki_bridging_2024} with the main difference concerning algorithmic choices.
 
-We propose ProDMP \cite{li_prodmps_2022} for trajectory representation which has been shown to work well with TRPL \cite{otto_differentiable_2020} as shown in \cite{otto_deep_2023}. This allows for faster learning compared to \cite{kicki_bridging_2024}.
+We propose ProDMP \cite{li_prodmps_2022} for trajectory representation and TRPL \cite{otto_differentiable_2020} for learning to parametrize the trajectories which have been shown to work well together \cite{otto_deep_2023}. ProDMP allows for smooth trajectories when replanning which is ideal in cases where the environment is inpredictable and feedback control is preferred. Moreover, it can learn trajectories with high sample efficiency when paired with TRPL. TRPL is a gradient-based, on-policy RL algorithm that proposes advantages compared to the widely used PPO algorithm in terms of theoretical consistency w.r.t. the trust-region (TR) formulation and robustness to implementation details.
 
 \section{METHOD}
 
@@ -283,10 +319,10 @@ We use an episodic-RL approach in order to predict optimal trajectories to navig
 We assume an holonomic robot which implies straight forward dynamics from classical mechanics for the given agent position $\boldsymbol{p}_k$ at time $k$
 \begin{align}
     \label{eq:dynamics}
-    \boldsymbol{p}_{k+1} = \boldsymbol{p}_k + \dot{\boldsymbol{p}}_kT + \dfrac{1}{2}T^2\ddot{\boldsymbol{p}}_k &= \boldsymbol{p}_k + \dfrac{1}{2}\dot{\boldsymbol{p}}_kT + \dfrac{1}{2}T\dot{\boldsymbol{p}}_{k+1}\\
-    \text{and} \quad \dot{\boldsymbol{p}}_{k+1} = \dot{\boldsymbol{p}}+T\ddot{\boldsymbol{p}} \;& \Leftrightarrow \; \ddot{\boldsymbol{p}}=\dfrac{\dot{\boldsymbol{p}}_{k+1}-\dot{\boldsymbol{p}}_k}{T}.\nonumber
+    &\boldsymbol{p}_{k+1} = \boldsymbol{p}_k + \dot{\boldsymbol{p}}_kT + \frac{1}{2}T^2\ddot{\boldsymbol{p}}_k = \boldsymbol{p}_k + \frac{1}{2}T(\dot{\boldsymbol{p}}_k+\dot{\boldsymbol{p}}_{k+1})\\
+    &\quad\: \text{and} \quad \dot{\boldsymbol{p}}_{k+1} = \dot{\boldsymbol{p}}_k+T\ddot{\boldsymbol{p}}_k \; \Leftrightarrow \; \ddot{\boldsymbol{p}}_k=\dfrac{\dot{\boldsymbol{p}}_{k+1}-\dot{\boldsymbol{p}}_k}{T}.\nonumber
 \end{align}
-To simplify the problem and reduce the numerical complexity (especially important for MPC), we apply velocity control. We further omit the step indexes when possible to avoid clutter. Iteratively we derive the transition matrix for a given horizon $N$ and current step $\boldsymbol{p}_0$ based on \Cref{eq:dynamics}
+To simplify the problem and reduce the numerical complexity, we apply velocity control. We further omit the step indexes when possible to avoid clutter. Iteratively we derive the transition matrix for a given horizon $N$ and current step $\boldsymbol{p}_0$ based on \Cref{eq:dynamics}
 \begin{align}
     \label{eq:dynamics_horizon}
     &\quad\quad\quad\quad P=P_0+\dfrac{1}{2}T\dot{P}_0+M_{pv}\dot{P}, \quad (P=\boldsymbol{p}_{1:N}),\nonumber\\
@@ -305,10 +341,11 @@ Given our model we can define our cost function as the distance to a reference t
     &\min\limits_{\dot{P}}\frac{1}{2}\vert\vert P - P^{ref}\vert\vert \Leftrightarrow \min\limits_{\dot{P}}\frac{1}{2}\left(P-P^{ref}\right)^\intercal\left(P-P^{ref}\right) \nonumber\\
     \Leftrightarrow&\min\limits_{\dot{P}} \frac{1}{2}\dot{P}^\intercal\underbrace{M_{pv}^\intercal M_{pv}}_{\substack{=Q \\ \text{quadratic} \\ \text{term}}}\dot{P} +  \underbrace{\left(P_0-P^{ref}+ \frac{1}{2}T\dot{P}_0\right)^\intercal M_{pv}}_{=q \;\text{linear term}}\dot{P}.\nonumber
 \end{align*}
-Linear constraints can be arbitrarily added to this objective, see \Cref{tab:constraints}. Passive safety is ensured by explicitly setting the last value of the control vector $\dot{P}$ to zero, thus lowering also the dimensionality of the problem. Velocity and acceleration constraints are non-linear as we assume a maximum value on all directions of the $xy$ plane. The circle representing the constraint is linearized using a polygon (by default an octagon). Each edge of the octagon is a constraint represented by the inequality $y - m_ix-b_i<0$. This implies multiplying the $x$ values (the first half of $\dot{P}$) by coefficient $m_i$ while the $y$ values remain the same, and the constants $b_i$ for the line are moved to the right side with a positive sign. In order to calculate the acceleration from the given velocity control path the velocity at step $k+1$ is subtracted from the velocity at step $k$ and divided by $T$ \Cref{eq:dynamics} which is parallelized with matrix $D$. The acceleration at step $1$ depends on the current known velocity which is written on the right side of the inequality. Finally, the crowd constraint is linearized by assuming that the crowd will follow the last computed trajectory from the previous MPC iteration $\boldsymbol{\bar{p}}$. For the crowd distance constraints we assume that the members of the crowd maintain the current velocity and increase the safety distance by the maximum distance in the error of the prediction. The maximum error will be lower than the distance covered during time-step $T$ with $\dot{\boldsymbol{p}}_{max}$, as represented in \Cref{fig:uncert}.
+
+Linear constraints can be arbitrarily added to this objective, see \Cref{tab:constraints}. Passive safety is ensured by explicitly setting the last step of the control vector $\dot{P}$ to zero. Velocity and acceleration constraints are non-linear as we assume a threshold value in all directions. The circle representing the constraint is linearized using an octagon. Each edge of the octagon is a constraint represented by the inequality $y - m_ix-b_i<0$. This implies multiplying the $x$ values (the first half of $\dot{P}$) by coefficient $m_i$ while the $y$ values remain the same, and the constant $b_i$ is moved to the right side with a positive sign. In order to calculate the acceleration from the given velocity control path, velocities at steps $k+1$ and $k$ are subtracted and divided by $T$ \Cref{eq:dynamics} which is parallelized with matrix $D$. The acceleration at step $1$ depends on $\dot{\boldsymbol{p}}_0$ which is written on the right side of the inequality. Finally, the crowd constraint is linearized by assuming that the agent will follow the last computed MPC trajectory $\boldsymbol{\bar{p}}$. We also assume that the members of the crowd maintain the current velocity and increase the safety distance by the maximum distance in the error of the prediction. The maximum error will be lower than the distance covered during time-step $T$ with $\dot{\boldsymbol{p}}_{max}$, as represented in \Cref{fig:uncert}.
 \begin{table}[ht]
     \centering
-    \caption{Various constraints for MPC. $m_{i}$ and $b_{i}$ are the coefficients that define the edges ($y-m_ix-b_i<0$) of a polygon inscribed and approximating a circle implying a limited maximum value in all directions. $C$ is the number of members in the crowd and $p_{c_j,k}$ refers to crowd member $j$ at time-step $k$ and $d$ is the safety distance.}
+    \caption{Various constraints for MPC. $m_{i}$ and $b_{i}$ are the coefficients that define the edges ($y-m_ix-b_i<0$) of a polygon inscribed and approximating a circle. $C$ is the number of members in the crowd and $\boldsymbol{p}_{c_j,k}$ refers to crowd member $j$ at time-step $k$ and $d$ is the safety distance.}
     \label{tab:constraints}
     \begin{tabular}{ c | c }
     \hline
@@ -364,51 +401,52 @@ Linear constraints can be arbitrarily added to this objective, see \Cref{tab:con
 % \begin{tikzpicture}[remember picture,overlay]
 %     \draw let \p1=($(top2)-(bottom2)$),\n1={atan2(\y1,\x1)} in node[xshift=-8.4mm,yshift=-20mm,rotate fit=\n1,fit=(bottom2) (top2),draw,rounded corners, inner xsep=1.5pt, inner ysep=0.5pt]{};
 % \end{tikzpicture}
+\vspace{-5mm}
 \begin{figure}[ht]
     \centering
         \resizebox{8cm}{!}{\input{schema/uncertainty.tex}}
-    \caption{Uncertainty explodes for future predictions (shown here for three steps in the future).}
+    \caption{Uncertainty explodes for future predictions.}
     \label{fig:uncert}
     \vspace{-0.5cm}
 \end{figure}
 
 \subsection{Learning Trajectories for Navigation}\label{sec:prodmp}
 
-Episode-based RL can be more advantageous then step-based RL in case of non-Markovian environments, environments where atomic steps are inaccessible or when learning temporal dependencies might be ineffective. Using motion primitives implies an episode representing a task. These approach to learning is motivated biologically as it has been well studied that certain movements are directly encoded in the nervous system. ML methods were proposed using the damped-spring equations to model motion primitives \cite{Schaal2006,ijspeert_dynamical_2013} and more recently extended \cite{paraschos_probabilistic_2013,li_prodmps_2022}. The conventional spring-model $-ky-c\dot{y}+f_{ext}=m\ddot{y}$ with spring constants $k$ and $c$, mass $m$ and external forces $f_{ext}$ is written as
+Episode-based RL can be more advantageous then step-based RL in case of non-Markovian environments, environments where atomic steps are inaccessible or when learning temporal dependencies might be ineffective. Using motion primitives implies an episode representing a task. These approach to learning is motivated biologically as it has been well studied that certain movements are directly encoded in the nervous system. ML methods were proposed using the damped-spring equations to model motion primitives \cite{Schaal2006} and more recently extended \cite{paraschos_probabilistic_2013,li_prodmps_2022}. The conventional spring-model $-ky-c\dot{y}+f_{ext}=m\ddot{y}$ with spring constants $k$ and $c$, mass $m$ and external forces $f_{ext}$ is written as
+% omitted literature ijspeert_dynamical_2013
 \begin{equation}
     \label{eq:spring_model}
     \tau^2\ddot{y}=\alpha(\beta(g-y)-\tau\dot{y})-f(x),
 \end{equation}
-where $g$ represents the goal attractor, $\alpha,\beta$ are spring-damper constants, $f$ is the forcing term which we can define arbitrarily in order to execute desired trajectories and $\tau$ is used to control execution time. To cover the whole spectrum of desired movements, a weighted exponential basis functions scheme represents $f$, motivated in \cite[Section 2.1]{Schaal2006}
+where $g$ represents the goal attractor point, $\alpha,\beta$ are spring-damper constants, $f$ is the forcing term which we can define arbitrarily in order to execute desired trajectories and $\tau$ is used to control execution time. To cover the whole spectrum of desired movements, a weighted exponential basis functions scheme represents $f$, motivated in \cite[Section 2.1]{Schaal2006}
 \begin{equation}
     \label{eq:forcing_term}
     f(x)=x\dfrac{\sum_i\phi_i(x)w_i}{\sum_i\phi_i(x)} \quad \text{and} \quad \phi_i(x)=\exp{\left(\dfrac{-(x-\mu_i)^2}{2\sigma_i^2}\right)}.
 \end{equation}
-In this way it is possible to condition the desired motion using the weight parameters $w_i$ where $i$ indexes the basis dimension used to parametrize the motion. In our case the number of basis function is set to $4$ with little difference when using a value of $3$ while the dimension of the motion is in the $xy$ plane so 2D ($y\in\mathbb{R}^2$).
+In this way the desired motion is conditioned by the weight parameters $w_i$ where $i$ indexes the basis dimension. In our case the number of basis function is set to $4$ with little difference when using a value of $3$ while the dimension of the motion is in the $xy$ plane so 2D ($y\in\mathbb{R}^2$).
 
 The advantage of using ProDMP \cite{li_prodmps_2022} is that it combines the strengths of DMPs (smooth replanning throughout the trajectory) and ProMPs (modelling of statistical properties) while requiring only one offline basis function  $\boldsymbol{\Phi}$ computation instead of a costly online numerical integration of the dynamical system as in DMP. The replanning step is set arbitrarily and allows for better control as newer information becomes available to the policy. The Gaussian policy is used to sample a weight vector $\boldsymbol{w}\sim\mathcal{N}(\cdot\vert\boldsymbol{\mu}_{\boldsymbol{\theta}},\boldsymbol{\Sigma}_{\boldsymbol{\theta}})$ to parameterize the forcing function giving a trajectory $\boldsymbol{\lambda}=y_{1:N}$ using \Cref{eq:spring_model} and \Cref{eq:forcing_term}.
 
-The policy is trained using TRPL \cite{otto_differentiable_2020}, a PG-based method that implements differentiable trust-regions to avoid policy collapse by limiting updates for a distance metric $D$ and tunable hyperparameter $\epsilon$
+The policy is trained with TRPL \cite{otto_differentiable_2020}, a PG-based method that implements differentiable TRs to avoid policy collapse by limiting updates for a distance metric $D$ and tunable $\epsilon$
 \begin{align}
     \label{eq:tr_rl}
     \boldsymbol{\theta}^\star&=\argmax_{\boldsymbol{\theta}}\mathbb{E}_{(s,a)\sim p_{\boldsymbol{\theta}}(\tau)}\left[Q^{\pi_{\boldsymbol{\theta}_{old}}}(s,a)\right], \nonumber \\
     &\text{s.t.}\quad D(\pi_{\boldsymbol{\theta}_{old}}, \pi_{\boldsymbol{\theta}}) < \epsilon,\quad \forall s\in\mathcal{S}.
 \end{align}
-TRPL introduces two advantages compared to PPO \cite{schulman2017ppo}: stability w.r.t. code-level optimizations \cite{Engstrom2020Implementation} and the capacity to constrain states individually. The objective in \Cref{eq:tr_rl} is simplified by using a Q-function, even though commonly a weighted (IS) advantage function is used. The usual actions $a$ in this case are the weights to parameterize the ProDMP. TRPL has shown promising results in challenging tasks for learning ProDMP trajectories \cite{otto_deep_2023}.
-
-We use a LiDAR representation for the obstacles around the agent and the relative position of the goal. In order to include information about the movement of the crowd, we use velocities along the LiDAR rays. To complete the observation, the 2D absolute velocity of the agent is given in order to be able to accelerate and decelerate accordingly. The architecture and decision making pipeline for the next action, given as velocity, is shown in \Cref{fig:policy}.
+TRPL introduces two advantages compared to PPO \cite{schulman2017ppo}: stability w.r.t. code-level optimizations \cite{Engstrom2020Implementation} and the capacity to constrain states individually. This is achieved by applying projection layers to the policy output using a predefined distance to project the mean and variance. The objective in \Cref{eq:tr_rl} is simplified by using a Q-function, even though commonly a weighted (IS) advantage function is used. The usual actions $a$ in this case are the weights $\boldsymbol{w}$ to parameterize the ProDMP. The policy and VF share the same backbone architecture using 1D CNN for feature extraction of the LiDAR information and a fully-connected layer for the remaining observation. The full architecture and decision making pipeline for the next action, is shown in \Cref{fig:policy}.
 \begin{figure}[t]
     \centering
         \resizebox{8.4cm}{!}{\input{schema/policy_net_2x1d.tex}}
-    \caption{Policy architecture. Where $\boldsymbol{o}_t$ relates to the current observation of the environment and $\boldsymbol{c}_t$ the resulting constraints. LiDAR and velocity along LiDAR rays are concatenated in a 2D matrix and features are extracted by a 1D convolutional NN. Features are extracted by a fully connected layer from the rest of the observation consisting of the goal position and the agent velocity. The output features for both types of observations are concatenated and passed trough two fully connected layers. Two additional fully connected layers predict the mean and the variance parametrising a normal distribution. The normal distribution reflects the weights to parametrize the ProDMP trajectory $\lambda_t$. Based on the reference trajectory $\lambda_t$ the observations $o_t$ and the constraints $c_t$, MPC computes the next control action $a_{t+1}$.}
+    \caption{Policy architecture. LiDAR distances and velocity along LiDAR rays are concatenated in a 2D matrix and features are extracted with a 1D CNN. Goal position and agent velocity features are extracted by a fully connected layer. Both output features are concatenated and passed through additional fully connected layers to predict the mean and the variance parameterizing a normal distribution. The distribution reflects the weights for the ProDMP trajectory $\boldsymbol{\lambda}_t$. Based on $\lambda_t$, the observations $\boldsymbol{o}_t$ and the constraints $\boldsymbol{c}_t$, MPC computes the next control action $\boldsymbol{a}_{t+1}$.}
     \label{fig:policy}
 \end{figure}
 
 \subsection{MPC as Safety Filter for Episode-based RL}\label{sec:const}
 
-We propose to combine both approaches by setting the reference trajectory in the MPC objective to the prediction from the ProDMP TRPL policy $P^{ref}\coloneqq \boldsymbol{\lambda}$. The length for the prediction must be longer than the MPC horizon. Moreover, it is important to set the rate $r$ at which the policy replans the path. A high replanning period will results in worse predictions for steps far in the future. A short horizon will increase computational cost while avoiding ajerky behaviour thanks to the properties of ProDMP. The reference trajectory is truncated for MPC and optimization is executed in a closed-loop control manner until replanning is reengaged. In Algorithm \ref{algo:main}, the two stages of the policy are shown. In lines 3-6 the new trajectory is computed, in line 7 the reference trajectory for the MPC objective is set. In lines 8 and 9 the necessary matrices, vectors are updated in order to run the QP optimization (line 10) with constraints.
+We propose to combine both approaches by setting the reference trajectory in the MPC objective to the prediction from the ProDMP TRPL policy $P^{ref}\coloneqq \boldsymbol{\lambda}$. The length for the prediction must be longer than the MPC horizon. Moreover, it is important to set the rate $r$ at which the policy replans the path. A high replanning period will results in worse predictions for steps far in the future. A short horizon will increase computational cost while avoiding jerky behaviour thanks to the properties of ProDMP. The reference trajectory is truncated for MPC and optimization is executed in a closed-loop control manner until replanning is reengaged. In Algorithm \ref{algo:main}, the two stages of the policy are shown. In lines 3-6 the new trajectory is computed, in line 7 the reference trajectory for the MPC objective is set. In lines 8 and 9 the necessary matrices, vectors are updated in order to run the QP optimization (line 10) with constraints.
 
-While learning should allow for a proper symbiotic relation between the two components, various considerations can accelerate the learning process. This entails mainly hyperparameters like the \textit{stability coefficient} for MPC in order to encourage smooth control, the horizon $N$ for MPC and the \textit{goal scale} for ProDMP to set a suitable length for the trajectories learned.
+While learning should allow for a proper symbiotic relation between the two components, various considerations can accelerate the learning process. This entails mainly hyperparameters like the \textit{stability coefficient} for MPC in order to encourage smooth control, the horizon $N$ for MPC and the \textit{goal scale} for ProDMP to set a suitable length for the learned trajectories.
+\setlength{\textfloatsep}{2pt plus 1pt minus 1pt}
 \begin{algorithm}
 \caption{Inference of ProDMP MPC}\label{algo:main}
     \KwData{Policy $\boldsymbol{\theta}$, ProDMP ($\boldsymbol{\Phi}$, $M$, $r$),\\ \hspace{8.4mm} MPC ($N, M_{pv}, M_i, b_i, d$), env $e$}
@@ -432,181 +470,218 @@ The stability term is an especially important factor when implementing the intri
 \begin{align*}
     r_i = \alpha\sum_{t}^{t+r}\left\vert\left\vert P_t - P^{ref}_t\right\vert\right\vert,
 \end{align*}
-as the MPC behaviour becomes unpredictable for RL when the term is omitted. There are limitations to the effect of the intrinsic component for highly jerky control from MPC. This can happen when considering uncertainty in the crowd prediction. In order to ensure passive safety, the crowd distance $d$ is augmented for future positions by the maximum error in distance prediction, as discussed in \Cref{sec:mpc} and shown in \Cref{fig:uncert}. With this conservative constraint the FRP becomes more noticeable. We use the QP-solver \cite{goulart_clarabel_2024} with tolerance parameters of $10^{-5}$. Moreover, crowd-distance, velocity and acceleration constraints are removed when possible based on distance and velocity in order to lower the computational footprint. As default values we use a time-step $T$ of $0.1s$, replanning $r$ every $2$ steps ($0.2s$) and MPC horizon $N$ of $20$ ($2s$). The batch size is $131$k and 10 backpropagation steps are executed per update iteration. On average TRPL with ProDMP converges after 10M environment steps when using a constant velocity crowd and around 40M steps when using ORCA.
+as the MPC behaviour becomes unpredictable for RL when the term is omitted. There are limitations to the effect of the intrinsic component for highly jerky control from MPC. This can happen when considering uncertainty in the crowd prediction. In order to ensure passive safety, the crowd distance $d$ is augmented for future positions by the maximum error in distance prediction, as discussed in \Cref{sec:mpc} and shown in \Cref{fig:uncert}. With this conservative constraint the FRP becomes more noticeable. We use the QP-solver \cite{goulart_clarabel_2024} with tolerance parameters of $10^{-5}$. Moreover, crowd-distance, velocity and acceleration constraints are removed when possible based on distance and velocity in order to lower the computational footprint. As default values we use a time-step $T$ of $0.1s$, replanning $r$ every $2$ steps ($0.2s$) and MPC horizon $N$ of $20$ ($2s$). The batch size is $131$k and 10 backpropagation steps are executed per update iteration. On average TRPL with ProDMP converges after 30M environment steps when using a constant velocity crowd and around 100M steps when using ORCA.
 
 
 \section{EVALUATION}\label{sec:eval}
 
-We evaluate our approach in three main perspectives: efficiency, safety and FRP. At the same time we compare two aspects: the improvements brought to MPC and RL when combining the two and the difference in performance to a baseline step-based RL algorithm like SAC \cite{haarnojaZAL18} (performing better than PPO in our testing) and the state of the art \cite{everett_collision_2021}. For the latter an evaluation benchmark is already implemented in \verb!gym-collision-avoidance! (GCA) \footnote{\url{link/to/gca_environment}}. The general setup involves an agent or multiple agents controlled by the same or different policies with each a goal position. No static obstacles or walls are considered in this environment, however the observation remains the same since we use LiDAR. During training and testing we make use of a crowd modeling algorithm ORCA \cite{berg_optimal_2011}. As metrics we use the \textit{return}, \textit{time to goal} (TTG) and \textit{success rate} (reaching the goal) for efficiency or performance. Safety is evaluated based on \textit{collision rate} and for the gravity of the collision we use \textit{collision speed}, \textit{collision agent speed} and \textit{maximum collision intersection} (this is the maximal overlap between colliding agents if they would go through one another, a high percentage indicates a greater overlap and a more direct collision). FRP is prominent with classical constraint-based approaches, so we evaluate the advantages against MPC. There is no well-established metric to quantify the problem, we propose to use the number of times that the QP-solver fails to find a solution for the given constraints. In this case the last computed braking trajectory is applied which means that the robot will potentially stop. ProDMP was trained using the \verb!CrowdNavigation!\footnote{\url{link/to/environment}} environment. Further implementations details can be found for all components \verb!MPCCrowdNav!\footnote{\url{link/to/mpc}}, \verb!TrustRegionProjectionLayers!\footnote{\url{link/to/rl_algorithm}}.
+We evaluate our approach in three main perspectives: efficiency as a means to measure collaboration, safety and FRP. At the same time we compare two aspects: the improvements brought to MPC and RL when combining the two and the difference in performance to a baseline step-based RL algorithm like SAC \cite{haarnojaZAL18} (performing better than PPO in our testing), a baseline episode-based RL algorithm like ProDMP with TRPL with a simple velocity controller and the state of the art \cite{everett_collision_2021}. For the latter an evaluation benchmark is already implemented in \verb!gym-collision-avoidance! (GCA) \footnote{\url{link/to/gca_environment}}. The general setup involves an agent or multiple agents controlled by the same or different policies with each a goal position. No static obstacles or walls are considered in this environment, however the observation remains the same since we use LiDAR. During training and testing we make use of a crowd modeling algorithm ORCA \cite{berg_optimal_2011}. As metrics we use the \textit{return}, \textit{time to goal} (TTG) and \textit{success rate} (reaching the goal) for efficiency or performance. Safety is evaluated based on \textit{collision rate} and for the gravity of the collision we use \textit{collision speed}, \textit{collision agent speed} and \textit{maximum collision intersection} (this is the maximal overlap between colliding agents if they would go through one another, a high percentage indicates a greater overlap and a more direct collision). FRP is prominent with classical constraint-based approaches, so we evaluate the advantages against MPC. There is no well-established metric to quantify the problem, we propose to use the number of times that the QP-solver fails to find a solution for the given constraints. In this case the last computed braking trajectory is applied which means that the robot will potentially stop. ProDMP was trained using the \verb!CrowdNavigation!\footnote{\url{link/to/environment}} environment. Further implementations details can be found for all components \verb!MPCCrowdNav!\footnote{\url{link/to/mpc}}, \verb!TrustRegionProjectionLayers!\footnote{\url{link/to/rl_algorithm}}.
 % Further implementations details can be found for all components \footnote{https://github.com/dhimiter49/gym-collision-avoidance/tree/prodmp_policy} \textbf{CrowdNavigation}{https://github.com/dhimiter49/fancy_gym_crowd/tree/crowd_nav} \textbf{MPCCrowdNav}\footnote{\url{https://github.com/dhimiter49/mpc_crowd_nav}}, \textbf{TrustRegionProjections}\footnote{\url{https://github.com/dhimiter49/TrustRegionProjections}}.
 
 
 \subsection{Constant Velocity Crowd}
 
-In this environment, shown in \Cref{fig:env}, the prediction of the future position of the crowd is perfect, which should give the best performance for MPC. From evaluation, the analysis is more complex. In \Cref{tab:const}, we see a collection of results for different algorithms. MPC is able to consistently go faster to the goal due to its objective to do so on a straight path with $\dot{\boldsymbol{p}}_{max}$. This results in low TTG but also reduced success rate because it ignores the crowd and the optimal path to take relative to the crowd. This is the reason why combining MPC with a learned RL reference trajectory results in a higher success rate ($\sim$6\%). While a lower TTG means a higher return, at the same time ignoring a comfortable distance to the crowd penalises MPC agents and increasing the distance constraint in order to optimize this component of the reward would introduce a lot of inefficiency w.r.t. reaching the goal quickly. As expected, pure RL methods achieve high return, especially ProDMP while SAC maintains a high collision rate reducing the final return. As a reminder the return is an arbitrary metric, by lowering the coefficient for the goal completion $C_g$ it is possible to have a higher return for MPC approaches compared to pure ProDMP, and similarly by increasing the penalty for collisions (default is $-10$) it is possible to have a higher return for MPC when compared to SAC and ProDMP, however ProDMP MPC is the most robust w.r.t. these changes.
-\begin{table*}[ht]
+In this environment, shown in \Cref{fig:env}, the prediction of the future position of the crowd is perfect, which gives the best performance for MPC. In \Cref{plots:const}, we see a collection of results for different algorithms. MPC is able to consistently go faster to the goal due to its objective to do so in a straight path with $\dot{\boldsymbol{p}}_{max}$. This results in low TTG but reduced success rate because it ignores the crowd and the optimal path relative to it. This is the reason why combining MPC with a learned RL trajectory results in higher success rate ($\sim$5\%). While a lower TTG means a higher return, ignoring a comfortable distance to the crowd penalises MPC agents. Furthermore, increasing the distance constraint to optimize this component of the reward would introduce a lot of inefficiency w.r.t. reaching the goal quickly. As expected, pure RL methods achieve high return, especially ProDMP while SAC maintains a high collision rate reducing the final return. As a reminder the return is an arbitrary metric, by lowering goal completion $C_g$ it is possible to have a higher return for MPC approaches compared to pure ProDMP, and similarly by increasing the penalty for collisions (default is $-10$) it is possible to have a higher return for MPC when compared to SAC and ProDMP, however ProDMP MPC is the most robust w.r.t. these changes.
+% \begin{table*}[ht]
+%     \centering
+%     \caption{algorithm comparison for constant crowd environment.}
+%     \label{tab:const}
+%     \begin{tabular}{ | c | c | c | c | c | c | c | c | c |   }
+%     \hline
+%         \backslashbox[25mm]{metrics}{algorithms} & \makecell{sac} & \makecell{prodmp} & \makecell{mpc \\ $n=10$} & \makecell{mpc \\ $n=20$} & \makecell{mpc sh \\ $n=20$} & \makecell{prodmp mpc \\ $n=20$}  & \makecell{prodmp mpc \\ $n=20$, sh} \\
+%     \hline
+%         return $\uparrow$ & 8.33 $\pm$ 0.19  & \textcolor{mygreen}{\textbf{10.19}}  $\pm$ 0.11 & 8.51 & 8.32 & 8.66 & \textcolor{lightgreen}{\textbf{9.5}} $\pm$ 0.1 & \textcolor{lightgreen}{\textbf{9.66}} $\pm$ 0.08 \\
+%         ttg $\downarrow$ (s) & 7.34 $\pm$ 0.05 & 7.19 $\pm$ 0.07  & \textcolor{mygreen}{\textbf{6.37}} & \textcolor{mygreen}{\textbf{6.43}} & \textcolor{mygreen}{\textbf{6.36}} & \textcolor{lightgreen}{\textbf{6.84}} $\pm$ 0.02  & \textcolor{lightgreen}{\textbf{6.82}} $\pm$ 0.02  \\
+%         success $\uparrow$ (\%) & 92.14 $\pm$ 0.49  & 95.38 $\pm$ 0.61  & 93.8  & 93.5  & 93.9  & \textcolor{mygreen}{\textbf{99.34}} $\pm$ 0.16 & \textcolor{mygreen}{\textbf{99.8}} $\pm$ 0.11  \\
+%     \hline
+%         col. $\downarrow$ (\%) & \textcolor{myred}{\textbf{7.3}} $\pm$ 0.82  & \textcolor{myred}{\textbf{4.42}} $\pm$ 0.67  & 1.0  & 0.5   & \textcolor{lightgreen}{\textbf{0.3}}  & 0.6 $\pm$ 0.19  & \textcolor{mygreen}{\textbf{0.18}} $\pm$ 0.12  \\
+%         $\vert\vert\dot{p}-\dot{p}_c\vert\vert\downarrow$ (m/s) & \textcolor{myred}{\textbf{1.7}} $\pm$ 0.07  & \textcolor{myred}{\textbf{1.39}} $\pm$ 0.08  & 1.19  & \textcolor{mygreen}{\textbf{0.98}}  & 1.02  & 1.21 $\pm$ 0.08  & 1.26 $\pm$ 0.1 \\
+%         $\vert\vert\dot{p}\vert\vert\downarrow$ (m/s) & \textcolor{myred}{\textbf{0.94}} $\pm$ 0.01  & \textcolor{myred}{\textbf{0.95}} $\pm$ 0.01  & \textcolor{mygreen}{\textbf{0.0}}  & \textcolor{mygreen}{\textbf{0.0}}  & \textcolor{mygreen}{\textbf{0.0}}  & \textcolor{mygreen}{\textbf{0.0}} $\pm$ 0.0  & \textcolor{mygreen}{\textbf{0.0}} $\pm$ 0.0  \\
+%         col. area $\downarrow$ (\%) &\textcolor{mygreen}{\textbf{22.0}} $\pm$ 3.09  & \textcolor{mygreen}{\textbf{19.28}} $\pm$ 3.86  & 61.57  & 77.6  & 36.84  & 66.24 $\pm$ 7.4 & 42.87 $\pm$ 20.21  \\
+%     \hline
+%         braking $\downarrow$ (\%) & - & - & 2.9 & 8.5 & \textcolor{lightgreen}{\textbf{0.3}} & 3.02 $\pm$ 0.23 & \textcolor{mygreen}{\textbf{0.18}} $\pm$ 0.12 \\
+%     \hline
+%     \end{tabular}
+%     % \vspace{-0.5cm}
+% \end{table*}
+\begin{figure*}
     \centering
+    \scalebox{1.34}{\input{plots/const.pgf}}
+    \vspace{-10mm}
     \caption{Algorithm comparison for constant crowd environment.}
-    \label{tab:const}
-    \begin{tabular}{ | c | c | c | c | c | c | c | c | c |   }
-    \hline
-        \backslashbox[25mm]{Metrics}{Algorithms} & \makecell{SAC} & \makecell{ProDMP} & \makecell{MPC \\ $N=10$} & \makecell{MPC \\ $N=20$} & \makecell{MPC SH \\ $N=20$} & \makecell{ProDMP MPC \\ $N=20$}  & \makecell{ProDMP MPC \\ $N=20$, SH} \\
-    \hline
-        return $\uparrow$ & 8.33 $\pm$ 0.19  & \textcolor{mygreen}{\textbf{10.19}}  $\pm$ 0.11 & 8.51 & 8.32 & 8.66 & \textcolor{lightgreen}{\textbf{9.5}} $\pm$ 0.1 & \textcolor{lightgreen}{\textbf{9.66}} $\pm$ 0.08 \\
-        TTG $\downarrow$ (s) & 7.34 $\pm$ 0.05 & 7.19 $\pm$ 0.07  & \textcolor{mygreen}{\textbf{6.37}} & \textcolor{mygreen}{\textbf{6.43}} & \textcolor{mygreen}{\textbf{6.36}} & \textcolor{lightgreen}{\textbf{6.84}} $\pm$ 0.02  & \textcolor{lightgreen}{\textbf{6.82}} $\pm$ 0.02  \\
-        success $\uparrow$ (\%) & 92.14 $\pm$ 0.49  & 95.38 $\pm$ 0.61  & 93.8  & 93.5  & 93.9  & \textcolor{mygreen}{\textbf{99.34}} $\pm$ 0.16 & \textcolor{mygreen}{\textbf{99.8}} $\pm$ 0.11  \\
-    \hline
-        col. $\downarrow$ (\%) & \textcolor{myred}{\textbf{7.3}} $\pm$ 0.82  & \textcolor{myred}{\textbf{4.42}} $\pm$ 0.67  & 1.0  & 0.5   & \textcolor{lightgreen}{\textbf{0.3}}  & 0.6 $\pm$ 0.19  & \textcolor{mygreen}{\textbf{0.18}} $\pm$ 0.12  \\
-        $\vert\vert\dot{p}-\dot{p}_c\vert\vert\downarrow$ (m/s) & \textcolor{myred}{\textbf{1.7}} $\pm$ 0.07  & \textcolor{myred}{\textbf{1.39}} $\pm$ 0.08  & 1.19  & \textcolor{mygreen}{\textbf{0.98}}  & 1.02  & 1.21 $\pm$ 0.08  & 1.26 $\pm$ 0.1 \\
-        $\vert\vert\dot{p}\vert\vert\downarrow$ (m/s) & \textcolor{myred}{\textbf{0.94}} $\pm$ 0.01  & \textcolor{myred}{\textbf{0.95}} $\pm$ 0.01  & \textcolor{mygreen}{\textbf{0.0}}  & \textcolor{mygreen}{\textbf{0.0}}  & \textcolor{mygreen}{\textbf{0.0}}  & \textcolor{mygreen}{\textbf{0.0}} $\pm$ 0.0  & \textcolor{mygreen}{\textbf{0.0}} $\pm$ 0.0  \\
-        col. area $\downarrow$ (\%) &\textcolor{mygreen}{\textbf{22.0}} $\pm$ 3.09  & \textcolor{mygreen}{\textbf{19.28}} $\pm$ 3.86  & 61.57  & 77.6  & 36.84  & 66.24 $\pm$ 7.4 & 42.87 $\pm$ 20.21  \\
-    \hline
-        braking $\downarrow$ (\%) & - & - & 2.9 & 8.5 & \textcolor{lightgreen}{\textbf{0.3}} & 3.02 $\pm$ 0.23 & \textcolor{mygreen}{\textbf{0.18}} $\pm$ 0.12 \\
-    \hline
-    \end{tabular}
-    \vspace{-0.5cm}
-\end{table*}
+    \label{plots:const}
+    \vspace{-5mm}
+\end{figure*}
 
-Because of the perfect prediction of the crowd, ProDMP MPC does not introduce a substantial advantage in collision rate and collision speed. Unsurprisingly, both methods perform much better than RL methods on this regard. Collisions still happen because of the high density of the crowd, which results in the agent finding itself in a situation where it cannot escape a collision. In general, the collision speed and area of intersection are highly noisy, but the higher collision speed for SAC and ProDMP is notable. On the contrary, the collision intersection area is lower for these methods as the policy evades the collision until the last moment while MPC based approaches only require stopping before the collision happens without further consideration on severity. At the same time, some metrics might be inversely correlated, e.g. a lower collision rate might also indicate that the remaining collisions will be more severe thus less avoidable and analogously for TTG and success rate. The TTG will be lower for easier scenarios while lowering the success rate when failing more complicated scenarios. There is a trend of less collisions with longer horizons which plateaus for MPC after $N=20$ whereas for ProDMP MPC we see a further improvement from $0.18\%$ to $0.08\%$ which comes at the cost of $0.24\%$ less success rate, a higher TTG by $0.1s$ and a lower return by $0.43$ points for $N=30$.
+Because of the perfect prediction of the crowd, ProDMP MPC does not introduce a substantial advantage in collision rate and collision speed. Unsurprisingly, both methods perform much better than RL methods on this regard. Collisions still happen because of the high density of the crowd, which results in the agent finding itself in a situation where it cannot escape a collision. In general, the collision speed and area of intersection are highly noisy, but the higher collision speed for SAC and ProDMP is notable. On the contrary, the collision intersection area is lower for these methods as the policy evades the collision until the last moment while MPC based approaches only require stopping before the collision happens without further consideration on severity. It is important to keep in mind that some metrics might be inversely correlated, e.g. a lower collision rate might also indicate that the few remaining collisions will be more severe, thus less avoidable and analogously for TTG and success rate. The TTG will be lower for easier scenarios while lowering the success rate when failing more complicated scenarios.
+% There is a trend of less collisions with longer horizons which plateaus for MPC after $N=20$ whereas for ProDMP MPC we see a further improvement from $0.18\%$ to $0.08\%$ which comes at the cost of $0.24\%$ less success rate, a higher TTG by $0.1s$ and a lower return by $0.43$ points for $N=30$.
 
-Finally, its is clear that the number of braking instances reduces with a lower horizon and when using ProDMP. Going from horizon 20 to 10 reduces the braking trajectories by almost 6\% and using learned trajectories has the same influence. By far the most effective way of avoiding braking trajectories is to reduce the horizon. This is intuitive as lowering the horizon can drastically lower the number of constraints. We dynamically change the horizon while running MPC in cases where the QP-solver does not find a solution. Up to 3 shorter horizons are executed by reducing in half (by default it is shortened from 20 to 10 to 5 to 3). For a high enough deceleration speed the shortened horizon introduces no problems for passive safety. Using this technique has altogether a positive effects on all metrics. It is important to mention that, simply using a shorter horizon by default will have a negative effect on the ability of MPC to avoid future collisions. Based on the experiments on the constant crowd we set a default MPC horizon of 20 (2s). Longer trajectories of 30 and 40 steps introduced no notable advantage in our environment setup.
+Finally, its is clear that the number of braking instances reduces with a lower horizon (which drastically lowers the number of constraints) and when using ProDMP. Going from horizon 20 to 10 reduces the braking trajectories by almost 30\% and using learned trajectories reduces by around 20\%.  We dynamically change the horizon while running MPC in cases where the QP-solver does not find a solution. Up to 3 shorter horizons (SH) are executed by reducing in half (by default shortened from 20 to 10 to 5 to 3). For a high enough deceleration speed the shortened horizon introduces no problems for passive safety. Using this technique has altogether a positive effects on all metrics. It is important to mention that, simply using a shorter horizon by default will have a negative effect on the ability of MPC to avoid future collisions. Based on the experiments on the constant crowd we set a default MPC horizon of 20 (2s). Longer trajectories of 30 and 40 steps introduced no clear advantage as they reduce the collision rate to 0.1\% and further to 0\%, but lower also the success rate by 0.1\% and further by 0.8\%.
 
 \subsection{ORCA crowd}
 
-By using ORCA \cite{berg_optimal_2011} the crowd prediction cannot be perfect as the crowd will accelerate and decelerate towards the goal while avoiding collisions. In order to make the task more difficult for the agent, members modeled though ORCA will take in consideration only a fraction of the actual physical space the agent occupies. This means that the major part of the collision avoidance task has to be undertaken by the agent itself. In practice the radius of the agents is one forth of its real size from the perspective of ORCA.
+By using ORCA \cite{berg_optimal_2011} the crowd prediction cannot be perfect as the crowd will accelerate and decelerate towards the goal while avoiding collisions. In order to make the task more difficult for the agent, members modeled with ORCA will take in consideration only a fraction of the actual physical space the agent occupies. This means that the major part of the collision avoidance task has to be undertaken by the agent itself. In practice the radius of the agents is one forth of its real size from the perspective of ORCA.
 
-Because of the uncertainty in the position of the crowd, MPC performs quite poorly and it will often engage in braking trajectories that lead to crashes as the ORCA policy will not avoid the entire physical space of the agent, see \Cref{tab:orca}. The gain in performance is clear when dropping uncertainty and assuming constant velocity, however this has a negative effect on safety while ProDMP remains more performant overall. In this case collisions increase even more and of course passive safety is violated. Using ProDMP with MPC introduces some clear advantages as the percentage of braking trajectory severely decreases. As mentioned before training ProDMP with crowd uncertainty proved to be too difficult as the control that MPC applies on top of the ProDMP trajectory gets very unsmooth. The ProDMP MPC agents shown in \Cref{tab:orca} where trained without crowd uncertainty which violates passive safety, however greatly reduces collision rate and has seemingly no negative effect on collision speed. Adding crowd uncertainty almost halves the success rate while doubling crash percentage.
-\begin{table*}[ht]
+Because of the uncertainty in the position of the crowd, MPC performs quite poorly and it will often engage in braking trajectories that lead to crashes as the ORCA policy will not avoid the entire physical space of the agent, see \Cref{plots:orca_mpc}. The gain in performance is clear when dropping uncertainty and shortening the horizon, however this has a negative effect on safety. In order to account for the ORCA crowd that does not avoid crashes completely we also try to augment the distance (AG) in the MPC constraints. This increases the success rate and return but increases the collision rate as the agent will have less space to navigate in the environment.
+% \begin{table*}[ht]
+%     \centering
+%     \caption{Algorithm comparison for crowd running with ORCA.}
+%     \label{tab:orca}
+%     \begin{tabular}{ | c | c | c | c | c | c | c | c | c | c | c | }
+%     \hline
+%         \backslashbox[25mm]{Metrics}{Algorithms} & \makecell{MPC \\ uncert} & \makecell{MPC SH \\ uncert} & \makecell{MPC SH} & \makecell{SAC} & \makecell{ProDMP} & \makecell{ProDMP MPC} &  \makecell{ProDMP MPC \\ SH} & \makecell{ProDMP MPC \\ uncert, SH} \\
+%     \hline
+%         return $\uparrow$ & -5.4  & 1.75  & 3.65 & 1.56 $\pm$ 0.52 & \textcolor{mygreen}{\textbf{6.25}} $\pm$ 0.47 & \textcolor{lightgreen}{\textbf{4.94}} $\pm$ 0.16 & \textcolor{mygreen}{\textbf{5.03}} $\pm$ 0.16 & 2.71 $\pm$ 0.39\\
+%         TTG $\downarrow$ (s) & 7.91   & 7.73 & \textcolor{lightgreen}{\textbf{7.46}} & \textcolor{mygreen}{\textbf{6.44}} $\pm$ 0.29 & 8.3 $\pm$ 0.07 & 8.72 $\pm$ 0.07  & 8.73 $\pm$ 0.07  & 8.71 $\pm$ 0.16 \\
+%         success $\uparrow$ (\%) & \textcolor{myred}{\textbf{30.3}} & \textcolor{lightgreen}{\textbf{53.5}}   & \textcolor{mygreen}{\textbf{72.8}} & 39.3 $\pm$ 1.94 & \textcolor{mygreen}{\textbf{63.54}} $\pm$ 2.09 & \textcolor{mygreen}{\textbf{61.58}} $\pm$ 3.09  & \textcolor{mygreen}{\textbf{62.0}} $\pm$ 3.14  & \textcolor{myred}{\textbf{32.82}} $\pm$ 1.08 \\
+%     \hline
+%         col. $\downarrow$ (\%) & \textcolor{myred}{\textbf{22.1}} & \textcolor{myred}{\textbf{16.9}}   & \textcolor{myred}{\textbf{23.8}} & \textcolor{myred}{\textbf{19.6}} $\pm$ 4.38 & \textcolor{myred}{\textbf{12.86}} $\pm$ 1.47 & \textcolor{lightgreen}{\textbf{2.08}} $\pm$ 0.38  & \textcolor{mygreen}{\textbf{1.66}} $\pm$ 0.33  & \textcolor{lightgreen}{\textbf{3.32}} $\pm$ 0.43 \\
+%         $\vert\vert\dot{p}-\dot{p}_c\vert\vert\downarrow$ (m/s) & 1.27 & 1.26 & \textcolor{mygreen}{\textbf{1.04}} & \textcolor{myred}{\textbf{1.74}} $\pm$ 0.08 & \textcolor{mygreen}{\textbf{1.06}} $\pm$ 0.04 & 1.15 $\pm$ 0.09  & \textcolor{mygreen}{\textbf{1.1}} $\pm$ 0.08  & 1.2 $\pm$ 0.02 \\
+%         $\vert\vert\dot{p}\vert\vert$ $\downarrow$ (m/s) & \textcolor{mygreen}{\textbf{0.0}} & \textcolor{mygreen}{\textbf{0.0}} & \textcolor{myred}{\textbf{0.64}} & \textcolor{myred}{\textbf{0.94}} $\pm$ 0.02 & \textcolor{myred}{\textbf{0.98}} $\pm$ 0.01 & \textcolor{myred}{\textbf{0.69}} $\pm$ 0.05  & \textcolor{myred}{\textbf{0.67}} $\pm$ 0.04  & \textcolor{mygreen}{\textbf{0.0}} $\pm$ 0.0 \\
+%         col. area $\downarrow$ (m$^2$) & 5.86 & 6.38 & 5.53 & 7.89 $\pm$ 0.9 & 7.58 $\pm$ 0.83 & 3.83 $\pm$ 0.69  & \textcolor{mygreen}{\textbf{2.56}} $\pm$ 1.71  & 6.96 $\pm$ 0.36 \\
+%     \hline
+%         braking $\downarrow$ (\%)& \textcolor{myred}{\textbf{162.2}} & 20.6 & 12.5 & - & - & 10.28 $\pm$ 0.92  & \textcolor{mygreen}{\textbf{0.74}} $\pm$ 0.23  & 4.22 $\pm$ 0.48 \\
+%     \hline
+%     \end{tabular}
+
+%     \vspace{2mm}
+
+%     % \begin{tabular}{ | c | c | c | c | c | c | c | }
+%     % \hline
+%     %     \backslashbox[25mm]{Metrics}{Algorithms} & \makecell{MPC \\ uncert \\ $N=10$} & \makecell{MPC SH \\ uncert \\ $N=10$} & \makecell{MPC \\ uncert \\ $N=5$} & \makecell{ProDMP MPC \\ uncert, SH \\ $N=20$} & \makecell{ProDMP MPC \\ uncert, SH \\ $N=10$} & \makecell{ProDMP MPC \\ uncert, SH \\ $N=5$} \\
+%     % \hline
+%     %     return $\uparrow$ & -1.79 & 1.2 & -0.82 & 3.19 $\pm$ 0.38 & 4.31 $\pm$ 0.37 & 4.56 $\pm$ 0.22 \\
+%     %     TTG $\downarrow$ (s) & 7.75 & 7.64 & 7.68 & 8.54 $\pm$ 0.07 & 8.38 $\pm$ 0.08 & 8.35 $\pm$ 0.13 \\
+%     %     success $\uparrow$ (\%) & 47.9 & 57.7 & 53.9 & \textcolor{myred}{\textbf{30.42}} $\pm$ 1.2 & 49.64 $\pm$ 1.72 & 55.16 $\pm$ 2.15 \\
+%     % \hline
+%     %     col. $\downarrow$ (\%) & \textcolor{myred}{\textbf{24.4}} & \textcolor{myred}{\textbf{19.5}} & \textcolor{myred}{\textbf{29.5}} & 3.26 $\pm$ 0.44 & 4.86 $\pm$ 0.59 & \textcolor{myred}{\textbf{10.18}} $\pm$ 0.42 \\
+%     %     $\vert\vert\dot{p}-\dot{p}_c\vert\vert\downarrow$ (m/s) & 1.3 & 1.24 & 1.31 & 1.17 $\pm$ 0.08 & 1.21 $\pm$ 0.06 & 1.23 $\pm$ 0.02 \\
+%     %     $\vert\vert\dot{p}\vert\vert$ $\downarrow$ (m/s) & \textcolor{mygreen}{\textbf{0.0}} & \textcolor{mygreen}{\textbf{0.0}} &  \textcolor{mygreen}{\textbf{0.0}} & \textcolor{mygreen}{\textbf{0.0}} & \textcolor{mygreen}{\textbf{0.0}} $\pm$ 0.0 & \textcolor{mygreen}{\textbf{0.0}} $\pm$ 0.0\\
+%     %     col. area $\downarrow$ (m$^2$) & 5.04 & 6.73 & 5.13 &  7.19 $\pm$ 0.57 & 7.57 $\pm$ 0.75 & 7.52 $\pm$ 0.51 \\
+%     % \hline
+%     %     braking $\downarrow$ (\%) & 67.6 & 22.2 & 53.5 & 4.08 $\pm$ 0.564 & 5.63 $\pm$ 0.62 & 10.42 $\pm$ 0.58 \\
+%     % \hline
+%     % \end{tabular}
+
+%     \vspace{2mm}
+
+%     \begin{tabular}{ | c | c | c | c | }
+%     \hline
+%          \backslashbox[25mm]{Metrics}{Algorithms} & \makecell{ProDMP MPC \\ $d=0.46$} & \makecell{ProDMP MPC \\ $d=0.46$, $Cc\times = 0.5$} & \makecell{ProDMP \\  $Cc\times = 0.5$ } \\
+%     \hline
+%         return $\uparrow$ & 6.21 $\pm$ 0.37 & 5.91 $\pm$ 0.23 & 6.11 $\pm$ 0.24 \\
+%         TTG $\downarrow$ (s) & 8.66 $\pm$ 0.13 & 8.17 $\pm$ 0.04 & 8.26 $\pm$ 0.06 \\
+%         success $\uparrow$ (\%) & 62.4 $\pm$ 5.43 & 79.74 $\pm$ 2.57 & 69.68 $\pm$ 1.39 \\
+%     \hline
+%         col. $\downarrow$ (\%) & 1.22 $\pm$ 0.31 & 3.26 $\pm$ 0.93 & 13.6 $\pm$ 0.55 \\
+%         $\vert\vert\dot{p}-\dot{p}_c\vert\vert\downarrow$ (m/s) & 1.26 $\pm$ 0.07 & 1.38 $\pm$ 0.09 & 0.97 $\pm$ 0.03  \\
+%         $\vert\vert\dot{p}\vert\vert$ $\downarrow$ (m/s) & 0.58 $\pm$ 0.09 & 0.54 $\pm$ 0.07 & 0.98 $\pm$ 0.01 \\
+%         col. area $\downarrow$ (m$^2$) & 7.4 $\pm$ 1.98 & 5.79 $\pm$ 1.09 & 8.07 $\pm$ 0.52 \\
+%     \hline
+%         braking $\downarrow$ (\%) & 1.56 $\pm$ 0.32 & 3.9 $\pm$ 0.82 & - \\
+%     \hline
+%     \end{tabular}
+
+%     \vspace{2mm}
+
+%     % \begin{tabular}{ | c | c | c | c | c | c | c | c | c | }
+%     % \hline
+%     %     \backslashbox[25mm]{Metrics}{Algorithms} & \makecell{MPC \\ $d \pluseq 0.04$} & \makecell{MPC \\ $d \pluseq 0.08$} & \makecell{MPC \\ $d \pluseq 0.12$} & \makecell{MPC \\ $d \pluseq 0.16$} & \makecell{MPC \\ $d \pluseq 0.24$} & \makecell{MPC \\ $d \pluseq 0.4$} & \makecell{ProDMP MPC \\ $d \pluseq 0.06$} & \makecell{ProDMP MPC \\ $d \pluseq 0.12$} \\
+%     % \hline
+%     %     return $\uparrow$ & 4.02 & 4.27 & 4.4 & 4.11 & 4.16 & 3.36 & 6.21 $\pm$ 0.37 & 5.59 $\pm$ 0.29 \\
+%     %     TTG $\downarrow$ (s) & 7.66 & 7.74 & 7.8 & 7.88 & 7.89 & 7.95 & 8.66 $\pm$ 0.13 & 8.76 $\pm$ 0.18 \\
+%     %     success $\uparrow$ (\%) & 77.4 & 79.5 & 80.6 & 80.4 & 80.2 & 76 & 62.4 $\pm$ 5.43 & 57.22 $\pm$ 4.26 \\
+%     % \hline
+%     %     col. $\downarrow$ (\%) & 18 & 15 & 13.1 & 11 & 10.1 & 11 & 1.22 $\pm$ 0.31 & 1.64 $\pm$ 0.36\\
+%     %     $\vert\vert\dot{p}-\dot{p}_c\vert\vert\downarrow$ (m/s) & 1.2 & 1.28 & 1.32 & 1.29 & 1.22 & 1.21 & 1.26 $\pm$ 0.07 & 1.27 $\pm$ 0.03 \\
+%     %     $\vert\vert\dot{p}\vert\vert$ $\downarrow$ (m/s) & 0.55 & 0.52 & 0.42 & 0.3 & 0.31 & 0.16 & 0.58 $\pm$ 0.09 & 0.35 $\pm$ 0.04 \\
+%     %     col. area $\downarrow$ (m$^2$) & 6.58 & 5.84 & 6.73 & 6.36 & 7.06 & 5.99 & 7.4 $\pm$ 1.98 & 8.69 $\pm$ 2.4\\
+%     % \hline
+%     %     braking $\downarrow$ (\%) &  20.6 & 20.5 & 23.7 & 22.9 & 22.9 & 24.4 & 1.56 $\pm$ 0.37 & 2.32 $\pm$ 0.43 \\
+%     % \hline
+%     % \end{tabular}
+% \end{table*}
+\begin{figure*}
     \centering
+    \scalebox{1.35}{\input{plots/orca_mpc.pgf}}
+    \vspace{-1cm}
     \caption{Algorithm comparison for crowd running with ORCA.}
-    \label{tab:orca}
-    \begin{tabular}{ | c | c | c | c | c | c | c | c | c | c | c | }
-    \hline
-        \backslashbox[25mm]{Metrics}{Algorithms} & \makecell{MPC \\ uncert} & \makecell{MPC SH \\ uncert} & \makecell{MPC SH} & \makecell{SAC} & \makecell{ProDMP} & \makecell{ProDMP MPC} &  \makecell{ProDMP MPC \\ SH} & \makecell{ProDMP MPC \\ uncert, SH} \\
-    \hline
-        return $\uparrow$ & -5.4  & 1.75  & 3.65 & 1.56 $\pm$ 0.52 & \textcolor{mygreen}{\textbf{6.25}} $\pm$ 0.47 & \textcolor{lightgreen}{\textbf{4.94}} $\pm$ 0.16 & \textcolor{mygreen}{\textbf{5.03}} $\pm$ 0.16 & 2.71 $\pm$ 0.39\\
-        TTG $\downarrow$ (s) & 7.91   & 7.73 & \textcolor{lightgreen}{\textbf{7.46}} & \textcolor{mygreen}{\textbf{6.44}} $\pm$ 0.29 & 8.3 $\pm$ 0.07 & 8.72 $\pm$ 0.07  & 8.73 $\pm$ 0.07  & 8.71 $\pm$ 0.16 \\
-        success $\uparrow$ (\%) & \textcolor{myred}{\textbf{30.3}} & \textcolor{lightgreen}{\textbf{53.5}}   & \textcolor{mygreen}{\textbf{72.8}} & 39.3 $\pm$ 1.94 & \textcolor{mygreen}{\textbf{63.54}} $\pm$ 2.09 & \textcolor{mygreen}{\textbf{61.58}} $\pm$ 3.09  & \textcolor{mygreen}{\textbf{62.0}} $\pm$ 3.14  & \textcolor{myred}{\textbf{32.82}} $\pm$ 1.08 \\
-    \hline
-        col. $\downarrow$ (\%) & \textcolor{myred}{\textbf{22.1}} & \textcolor{myred}{\textbf{16.9}}   & \textcolor{myred}{\textbf{23.8}} & \textcolor{myred}{\textbf{19.6}} $\pm$ 4.38 & \textcolor{myred}{\textbf{12.86}} $\pm$ 1.47 & \textcolor{lightgreen}{\textbf{2.08}} $\pm$ 0.38  & \textcolor{mygreen}{\textbf{1.66}} $\pm$ 0.33  & \textcolor{lightgreen}{\textbf{3.32}} $\pm$ 0.43 \\
-        $\vert\vert\dot{p}-\dot{p}_c\vert\vert\downarrow$ (m/s) & 1.27 & 1.26 & \textcolor{mygreen}{\textbf{1.04}} & \textcolor{myred}{\textbf{1.74}} $\pm$ 0.08 & \textcolor{mygreen}{\textbf{1.06}} $\pm$ 0.04 & 1.15 $\pm$ 0.09  & \textcolor{mygreen}{\textbf{1.1}} $\pm$ 0.08  & 1.2 $\pm$ 0.02 \\
-        $\vert\vert\dot{p}\vert\vert$ $\downarrow$ (m/s) & \textcolor{mygreen}{\textbf{0.0}} & \textcolor{mygreen}{\textbf{0.0}} & \textcolor{myred}{\textbf{0.64}} & \textcolor{myred}{\textbf{0.94}} $\pm$ 0.02 & \textcolor{myred}{\textbf{0.98}} $\pm$ 0.01 & \textcolor{myred}{\textbf{0.69}} $\pm$ 0.05  & \textcolor{myred}{\textbf{0.67}} $\pm$ 0.04  & \textcolor{mygreen}{\textbf{0.0}} $\pm$ 0.0 \\
-        col. area $\downarrow$ (m$^2$) & 5.86 & 6.38 & 5.53 & 7.89 $\pm$ 0.9 & 7.58 $\pm$ 0.83 & 3.83 $\pm$ 0.69  & \textcolor{mygreen}{\textbf{2.56}} $\pm$ 1.71  & 6.96 $\pm$ 0.36 \\
-    \hline
-        braking $\downarrow$ (\%)& \textcolor{myred}{\textbf{162.2}} & 20.6 & 12.5 & - & - & 10.28 $\pm$ 0.92  & \textcolor{mygreen}{\textbf{0.74}} $\pm$ 0.23  & 4.22 $\pm$ 0.48 \\
-    \hline
-    \end{tabular}
+    \vspace{-4mm}
+    \label{plots:orca_mpc}
+\end{figure*}
 
-    \vspace{2mm}
+ProDMP performs on par with MPC while colliding less. Using ProDMP with MPC introduces some clear advantages as the percentage of braking trajectory severely decreases. As mentioned before training ProDMP with crowd uncertainty proved to be too difficult as the control that MPC applies on top of the ProDMP trajectory gets very unsmooth. The ProDMP MPC agent in \Cref{plots:orca_mpc} trained with uncertainty ensures passive safety, however noticeably reduces success rate and return while increasing collisions. The best performance is achieved by slightly increasing the safety distance (AD) in MPC in order to better share the task of collision avoidance between learning and classic control. Moreover, the RL algorithm performs better in the ORCA crowd by lowering the proxemics coefficient by half.
 
-    \begin{tabular}{ | c | c | c | c | c | c | c | }
-    \hline
-        \backslashbox[25mm]{Metrics}{Algorithms} & \makecell{MPC \\ uncert \\ $N=10$} & \makecell{MPC SH \\ uncert \\ $N=10$} & \makecell{MPC \\ uncert \\ $N=5$} & \makecell{ProDMP MPC \\ uncert, SH \\ $N=20$} & \makecell{ProDMP MPC \\ uncert, SH \\ $N=10$} & \makecell{ProDMP MPC \\ uncert, SH \\ $N=5$} \\
-    \hline
-        return $\uparrow$ & -1.79 & 1.2 & -0.82 & 3.19 $\pm$ 0.38 & 4.31 $\pm$ 0.37 & 4.56 $\pm$ 0.22 \\
-        TTG $\downarrow$ (s) & 7.75 & 7.64 & 7.68 & 8.54 $\pm$ 0.07 & 8.38 $\pm$ 0.08 & 8.35 $\pm$ 0.13 \\
-        success $\uparrow$ (\%) & 47.9 & 57.7 & 53.9 & \textcolor{myred}{\textbf{30.42}} $\pm$ 1.2 & 49.64 $\pm$ 1.72 & 55.16 $\pm$ 2.15 \\
-    \hline
-        col. $\downarrow$ (\%) & \textcolor{myred}{\textbf{24.4}} & \textcolor{myred}{\textbf{19.5}} & \textcolor{myred}{\textbf{29.5}} & 3.26 $\pm$ 0.44 & 4.86 $\pm$ 0.59 & \textcolor{myred}{\textbf{10.18}} $\pm$ 0.42 \\
-        $\vert\vert\dot{p}-\dot{p}_c\vert\vert\downarrow$ (m/s) & 1.3 & 1.24 & 1.31 & 1.17 $\pm$ 0.08 & 1.21 $\pm$ 0.06 & 1.23 $\pm$ 0.02 \\
-        $\vert\vert\dot{p}\vert\vert$ $\downarrow$ (m/s) & \textcolor{mygreen}{\textbf{0.0}} & \textcolor{mygreen}{\textbf{0.0}} &  \textcolor{mygreen}{\textbf{0.0}} & \textcolor{mygreen}{\textbf{0.0}} & \textcolor{mygreen}{\textbf{0.0}} $\pm$ 0.0 & \textcolor{mygreen}{\textbf{0.0}} $\pm$ 0.0\\
-        col. area $\downarrow$ (m$^2$) & 5.04 & 6.73 & 5.13 &  7.19 $\pm$ 0.57 & 7.57 $\pm$ 0.75 & 7.52 $\pm$ 0.51 \\
-    \hline
-        braking $\downarrow$ (\%) & 67.6 & 22.2 & 53.5 & 4.08 $\pm$ 0.564 & 5.63 $\pm$ 0.62 & 10.42 $\pm$ 0.58 \\
-    \hline
-    \end{tabular}
+% The behaviour of MPC was analyzed further for shorter horizons of 10 and 5 in order to evaluate if the reduction of constraints in scenarios with high uncertainty would benefit the overall policy. In the second part of \Cref{tab:orca} we see that both efficiency and braking trajectories get better with a shorter horizon however collision rate gets worse. When changing the horizon dynamically, the trade-off gets more complex as an horizon of 10 will achieve a better success rate and TTG while an horizon of 20 will have overall a higher return and less collisions. Training ProDMP with a short horizon yields much better results in cases where crowd uncertainty is employed, however ignoring crowd uncertainty is still more efficient and arguably safer at the cost of violating passive safety.
 
-    \vspace{2mm}
 
-    \begin{tabular}{ | c | c | c | c | }
-    \hline
-         \backslashbox[25mm]{Metrics}{Algorithms} & \makecell{ProDMP MPC \\ $d=0.46$} & \makecell{ProDMP MPC \\ $d=0.46$, $Cc\times = 0.5$} & \makecell{ProDMP \\  $Cc\times = 0.5$ } \\
-    \hline
-        return $\uparrow$ & 6.21 $\pm$ 0.37 & 5.91 $\pm$ 0.23 & 6.11 $\pm$ 0.24 \\
-        TTG $\downarrow$ (s) & 8.66 $\pm$ 0.13 & 8.17 $\pm$ 0.04 & 8.26 $\pm$ 0.06 \\
-        success $\uparrow$ (\%) & 62.4 $\pm$ 5.43 & 79.74 $\pm$ 2.57 & 69.68 $\pm$ 1.39 \\
-    \hline
-        col. $\downarrow$ (\%) & 1.22 $\pm$ 0.31 & 3.26 $\pm$ 0.93 & 13.6 $\pm$ 0.55 \\
-        $\vert\vert\dot{p}-\dot{p}_c\vert\vert\downarrow$ (m/s) & 1.26 $\pm$ 0.07 & 1.38 $\pm$ 0.09 & 0.97 $\pm$ 0.03  \\
-        $\vert\vert\dot{p}\vert\vert$ $\downarrow$ (m/s) & 0.58 $\pm$ 0.09 & 0.54 $\pm$ 0.07 & 0.98 $\pm$ 0.01 \\
-        col. area $\downarrow$ (m$^2$) & 7.4 $\pm$ 1.98 & 5.79 $\pm$ 1.09 & 8.07 $\pm$ 0.52 \\
-    \hline
-        braking $\downarrow$ (\%) & 1.56 $\pm$ 0.32 & 3.9 $\pm$ 0.82 & - \\
-    \hline
-    \end{tabular}
-
-    \vspace{2mm}
-
-    \begin{tabular}{ | c | c | c | c | c | c | c | c | c | }
-    \hline
-        \backslashbox[25mm]{Metrics}{Algorithms} & \makecell{MPC \\ $d \pluseq 0.04$} & \makecell{MPC \\ $d \pluseq 0.08$} & \makecell{MPC \\ $d \pluseq 0.12$} & \makecell{MPC \\ $d \pluseq 0.16$} & \makecell{MPC \\ $d \pluseq 0.24$} & \makecell{MPC \\ $d \pluseq 0.4$} & \makecell{ProDMP MPC \\ $d \pluseq 0.06$} & \makecell{ProDMP MPC \\ $d \pluseq 0.12$} \\
-    \hline
-        return $\uparrow$ & 4.02 & 4.27 & 4.4 & 4.11 & 4.16 & 3.36 & 6.21 $\pm$ 0.37 & 5.59 $\pm$ 0.29 \\
-        TTG $\downarrow$ (s) & 7.66 & 7.74 & 7.8 & 7.88 & 7.89 & 7.95 & 8.66 $\pm$ 0.13 & 8.76 $\pm$ 0.18 \\
-        success $\uparrow$ (\%) & 77.4 & 79.5 & 80.6 & 80.4 & 80.2 & 76 & 62.4 $\pm$ 5.43 & 57.22 $\pm$ 4.26 \\
-    \hline
-        col. $\downarrow$ (\%) & 18 & 15 & 13.1 & 11 & 10.1 & 11 & 1.22 $\pm$ 0.31 & 1.64 $\pm$ 0.36\\
-        $\vert\vert\dot{p}-\dot{p}_c\vert\vert\downarrow$ (m/s) & 1.2 & 1.28 & 1.32 & 1.29 & 1.22 & 1.21 & 1.26 $\pm$ 0.07 & 1.27 $\pm$ 0.03 \\
-        $\vert\vert\dot{p}\vert\vert$ $\downarrow$ (m/s) & 0.55 & 0.52 & 0.42 & 0.3 & 0.31 & 0.16 & 0.58 $\pm$ 0.09 & 0.35 $\pm$ 0.04 \\
-        col. area $\downarrow$ (m$^2$) & 6.58 & 5.84 & 6.73 & 6.36 & 7.06 & 5.99 & 7.4 $\pm$ 1.98 & 8.69 $\pm$ 2.4\\
-    \hline
-        braking $\downarrow$ (\%) &  20.6 & 20.5 & 23.7 & 22.9 & 22.9 & 24.4 & 1.56 $\pm$ 0.37 & 2.32 $\pm$ 0.43 \\
-    \hline
-    \end{tabular}
-\end{table*}
-
-The behaviour of MPC was analyzed further for shorter horizons of 10 and 5 in order to evaluate if the reduction of constraints in scenarios with high uncertainty would benefit the overall policy. In the second part of \Cref{tab:orca} we see that both efficiency and braking trajectories get better with a shorter horizon however collision rate gets worse. When changing the horizon dynamically, the trade-off gets more complex as an horizon of 10 will achieve a better success rate and TTG while an horizon of 20 will have overall a higher return and less collisions. Training ProDMP with a short horizon yields much better results in cases where crowd uncertainty is employed, however ignoring crowd uncertainty is still more efficient and arguably safer at the cost of violating passive safety.
 
 \subsection{Gym-collision-avoidance}
 
-We use GCA mainly to compare with the GA3C-CADRL algorithm \cite{everett_collision_2021}. We first analyze the performance of each algorithm in an homogeneous crowd controlled by one policy, see \Cref{tab:gca}. It is clear that GA3C-CADRL achieves the highest performance and efficiency. While some other methods like MPC without crowd uncertainty and SAC have lower TTG this is due to the much lower success rate. In this case, MPC with crowd uncertainty does the second best in terms of success rate which means that it better cooperates with itself compared to other learning approaches trained with ORCA simulation. While the return is higher for ProDMP MPC this is probably due to the penalty MPC receives when agents pass too close to each other. Another clue for the effect that this behaviour has, is the lower return when using a relaxed uncertainty for MPC which results in closer interactions between agents. Similarly to the performance of ProDMP MPC when using ORCA to model the crowd, adding uncertainty to the crowd prediction drastically diminishes performance in all three metrics. At the same time crowd uncertainty is necessary for MPC as otherwise too many braking trajectories occur, similar to the behaviour shown with an ORCA crowd.
-\begin{table*}[ht]
+We use GCA mainly to compare with the GA3C-CADRL algorithm \cite{everett_collision_2021}. We first analyze the performance of each algorithm in an homogeneous crowd controlled by one policy, see \Cref{plots:hom_mpc}. It is clear that GA3C-CADRL achieves the highest performance and efficiency. While some other methods like MPC without crowd uncertainty and SAC have lower TTG this is due to the much lower success rate. In this case, MPC with crowd uncertainty does the second best in terms of success rate which means that it better cooperates with itself compared to other learning approaches trained with ORCA simulation. While the return is higher for ProDMP MPC this is probably due to the penalty MPC receives when agents pass too close to each other. Another clue for the effect that this behaviour has, is the lower return when using a relaxed uncertainty for MPC which results in closer interactions between agents. Similarly to the performance of ProDMP MPC when using ORCA to model the crowd, adding uncertainty to the crowd prediction drastically diminishes performance in all three metrics. At the same time crowd uncertainty is necessary for MPC as otherwise too many braking trajectories occur, similar to the behaviour shown with an ORCA crowd.
+% \begin{table*}[ht]
+%     \centering
+%     \caption{Algorithm comparison with GCA, evaluation using 4, 5 and 6 agents in an homogeneous environment.}
+%     \label{tab:gca}
+%     \begin{adjustbox}{width=\textwidth}
+%     \begin{tabular}{ | c | c | c | c | c | c | c | c | c | c | c | }
+%     \hline
+%         \backslashbox[25mm]{Metrics}{Algorithms} & \makecell{GA3C-\\CADRL} & \makecell{MPC \\ SH} & \makecell{MPC SH \\ uncert} & \makecell{MPC SH \\ relax \\ uncert} & \makecell{SAC \\ ORCA} & \makecell{ProDMP \\ ORCA} & \makecell{ProDMP \\ ORCA \\ $Cc\times =0.5$ } & \makecell{ProDMP MPC \\ ORCA, SH} & \makecell{ProDMP MPC \\ ORCA, SH \\ uncert} & \makecell{ProDMP MPC \\ ORCA SH \\ $Cc\times=0.5$}\\
+%     \hline
+%         return $\uparrow$ & \textcolor{mygreen}{\textbf{0.95}} & -1.66 & \textcolor{lightgreen}{\textbf{0.76}} & 0.56 & 0.45 $\pm$ 0.07 & \textcolor{lightgreen}{\textbf{0.79}} $\pm$ 0.02 & 0.89 $\pm$ 0.03 & \textcolor{lightgreen}{\textbf{0.79}} $\pm$ 0.02 & 0.37 $\pm$ 0.01 & 0.06 $\pm$ 0.2\\
+%         TTG $\downarrow$ (s) & \textcolor{mygreen}{\textbf{7.36}} & 5.78 & 9.11 & 8.73 & 8.48 $\pm$ 1.29 & 12.48 $\pm$ 0.29 & 11.02 $\pm$ 1.02 & 12.87 $\pm$ 0.42 & 16.22 $\pm$ 0.16 & 9.82 $\pm$ 0.99\\
+%         success $\uparrow$ (\%) & \textcolor{mygreen}{\textbf{99.84}} & 47.21 & \textcolor{lightgreen}{\textbf{94.84}} & \textcolor{lightgreen}{\textbf{97.68}} & 71.43 $\pm$ 4.59 & 80.1 $\pm$ 2.3 & 90.3 $\pm$ 2.86 & 80.1 $\pm$ 2.77 & \textcolor{myred}{\textbf{47.38}} $\pm$ 1.3 & 95.76 $\pm$ 1.07\\
+%     \hline
+%         col. $\downarrow$ (\%) & \textcolor{lightgreen}{\textbf{0.04}} & \textcolor{myred}{\textbf{50.15}} & \textcolor{mygreen}{\textbf{0}} & \textcolor{mygreen}{\textbf{0}} & 19.75 $\pm$ 5.6 & \textcolor{lightgreen}{\textbf{0.22}} $\pm$ 0.13 & \textcolor{lightgreen}{\textbf{0.27}} $\pm$ 0.15 & \textcolor{mygreen}{\textbf{0}} & \textcolor{mygreen}{\textbf{0}} & 0.06 $\pm$ 0.05\\
+%         $\vert\vert\dot{p} - \dot{p_c}\vert\vert$ $\downarrow$ (m/s) & \textcolor{myred}{\textbf{1}} & \textcolor{myred}{\textbf{0.87}} & \textcolor{mygreen}{\textbf{0}} & \textcolor{mygreen}{\textbf{0}} & \textcolor{myred}{\textbf{1.38}} $\pm$ 0.13 & \textcolor{myred}{\textbf{0.81}} $\pm$ 0.06 & \textcolor{myred}{\textbf{0.79}} $\pm$ 0.05 & \textcolor{mygreen}{\textbf{0}} & \textcolor{mygreen}{\textbf{0}} & 0.18 $\pm$ 0.15\\
+%         $\vert\vert\dot{p}\vert\vert$ $\downarrow$ (m/s) & \textcolor{myred}{\textbf{1}} & \textcolor{myred}{\textbf{0.77}} & \textcolor{mygreen}{\textbf{0}} & \textcolor{mygreen}{\textbf{0}} & \textcolor{myred}{\textbf{0.97}} $\pm$ 0.01 & \textcolor{myred}{\textbf{0.94}} $\pm$ 0.03 & \textcolor{myred}{\textbf{0.94}} $\pm$ 0.01 & \textcolor{mygreen}{\textbf{0}} & \textcolor{mygreen}{\textbf{0}} & 0.09 $\pm$ 0.08 \\
+%     \hline
+%         braking $\downarrow$ (\%) & - & 54.84 & 19.6 & 33.46 & - & - & - & \textcolor{mygreen}{\textbf{0.01}} $\pm$ 0 & 2.78 $\pm$ 1.07 & 46.08 $\pm$ 9.47 \\
+%     \hline
+%     \end{tabular}
+%     \end{adjustbox}
+% \end{table*}
+\begin{figure*}
     \centering
+    \scalebox{1.3}{\input{plots/hom_mpc.pgf}}
+    \vspace{-6mm}
     \caption{Algorithm comparison with GCA, evaluation using 4, 5 and 6 agents in an homogeneous environment.}
-    \label{tab:gca}
-    \begin{adjustbox}{width=\textwidth}
-    \begin{tabular}{ | c | c | c | c | c | c | c | c | c | c | c | }
-    \hline
-        \backslashbox[25mm]{Metrics}{Algorithms} & \makecell{GA3C-\\CADRL} & \makecell{MPC \\ SH} & \makecell{MPC SH \\ uncert} & \makecell{MPC SH \\ relax \\ uncert} & \makecell{SAC \\ ORCA} & \makecell{ProDMP \\ ORCA} & \makecell{ProDMP \\ ORCA \\ $Cc\times =0.5$ } & \makecell{ProDMP MPC \\ ORCA, SH} & \makecell{ProDMP MPC \\ ORCA, SH \\ uncert} & \makecell{ProDMP MPC \\ ORCA SH \\ $Cc\times=0.5$}\\
-    \hline
-        return $\uparrow$ & \textcolor{mygreen}{\textbf{0.95}} & -1.66 & \textcolor{lightgreen}{\textbf{0.76}} & 0.56 & 0.45 $\pm$ 0.07 & \textcolor{lightgreen}{\textbf{0.79}} $\pm$ 0.02 & 0.89 $\pm$ 0.03 & \textcolor{lightgreen}{\textbf{0.79}} $\pm$ 0.02 & 0.37 $\pm$ 0.01 & 0.06 $\pm$ 0.2\\
-        TTG $\downarrow$ (s) & \textcolor{mygreen}{\textbf{7.36}} & 5.78 & 9.11 & 8.73 & 8.48 $\pm$ 1.29 & 12.48 $\pm$ 0.29 & 11.02 $\pm$ 1.02 & 12.87 $\pm$ 0.42 & 16.22 $\pm$ 0.16 & 9.82 $\pm$ 0.99\\
-        success $\uparrow$ (\%) & \textcolor{mygreen}{\textbf{99.84}} & 47.21 & \textcolor{lightgreen}{\textbf{94.84}} & \textcolor{lightgreen}{\textbf{97.68}} & 71.43 $\pm$ 4.59 & 80.1 $\pm$ 2.3 & 90.3 $\pm$ 2.86 & 80.1 $\pm$ 2.77 & \textcolor{myred}{\textbf{47.38}} $\pm$ 1.3 & 95.76 $\pm$ 1.07\\
-    \hline
-        col. $\downarrow$ (\%) & \textcolor{lightgreen}{\textbf{0.04}} & \textcolor{myred}{\textbf{50.15}} & \textcolor{mygreen}{\textbf{0}} & \textcolor{mygreen}{\textbf{0}} & 19.75 $\pm$ 5.6 & \textcolor{lightgreen}{\textbf{0.22}} $\pm$ 0.13 & \textcolor{lightgreen}{\textbf{0.27}} $\pm$ 0.15 & \textcolor{mygreen}{\textbf{0}} & \textcolor{mygreen}{\textbf{0}} & 0.06 $\pm$ 0.05\\
-        $\vert\vert\dot{p} - \dot{p_c}\vert\vert$ $\downarrow$ (m/s) & \textcolor{myred}{\textbf{1}} & \textcolor{myred}{\textbf{0.87}} & \textcolor{mygreen}{\textbf{0}} & \textcolor{mygreen}{\textbf{0}} & \textcolor{myred}{\textbf{1.38}} $\pm$ 0.13 & \textcolor{myred}{\textbf{0.81}} $\pm$ 0.06 & \textcolor{myred}{\textbf{0.79}} $\pm$ 0.05 & \textcolor{mygreen}{\textbf{0}} & \textcolor{mygreen}{\textbf{0}} & 0.18 $\pm$ 0.15\\
-        $\vert\vert\dot{p}\vert\vert$ $\downarrow$ (m/s) & \textcolor{myred}{\textbf{1}} & \textcolor{myred}{\textbf{0.77}} & \textcolor{mygreen}{\textbf{0}} & \textcolor{mygreen}{\textbf{0}} & \textcolor{myred}{\textbf{0.97}} $\pm$ 0.01 & \textcolor{myred}{\textbf{0.94}} $\pm$ 0.03 & \textcolor{myred}{\textbf{0.94}} $\pm$ 0.01 & \textcolor{mygreen}{\textbf{0}} & \textcolor{mygreen}{\textbf{0}} & 0.09 $\pm$ 0.08 \\
-    \hline
-        braking $\downarrow$ (\%) & - & 54.84 & 19.6 & 33.46 & - & - & - & \textcolor{mygreen}{\textbf{0.01}} $\pm$ 0 & 2.78 $\pm$ 1.07 & 46.08 $\pm$ 9.47 \\
-    \hline
-    \end{tabular}
-    \end{adjustbox}
-\end{table*}
+    \vspace{-4mm}
+    \label{plots:hom_mpc}
+\end{figure*}
 
-\begin{table*}[ht]
+% \begin{table*}[ht]
+%     \centering
+%     \caption{Algorithm comparison with GCA, evaluating 6 policies (ORCA is used twice) in an heterogeneous environment.}
+%     \label{tab:gca_mix}
+%     \begin{tabular}{ | c | c | c | c | c | c | c | }
+%     \hline
+%         \backslashbox[25mm]{Metrics}{Algorithms} & \makecell{GA3C-\\CADRL} & \makecell{SAC} & \makecell{ORCA} & \makecell{MPC SH \\ relax \\ uncert} & \makecell{ProDMP MPC \\ ORCA, SH} \\
+%     \hline
+%         return $\uparrow$ & 0.24 & 0.29 & \textcolor{myred}{\textbf{-0.58}} & 0. &  \textcolor{mygreen}{\textbf{0.56}} \\
+%         TTG $\downarrow$ (s) &  \textcolor{mygreen}{\textbf{7.9}} & 9.01 & \textcolor{lightgreen}{\textbf{8.25}} & 10 &  \textcolor{myred}{\textbf{15.18}} \\
+%         success $\uparrow$ (\%) &  \textcolor{mygreen}{\textbf{97.53}} & 87.73 &  \textcolor{lightgreen}{\textbf{94.93}} &  \textcolor{lightgreen}{\textbf{94.3}} & \textcolor{myred}{\textbf{66.6}} \\
+%     \hline
+%         col. $\downarrow$ (\%) &  \textcolor{lightgreen}{\textbf{2}} & \textcolor{myred}{\textbf{9.3}} &  \textcolor{myred}{\textbf{4.5}} &  \textcolor{lightgreen}{\textbf{1.4}} & \textcolor{mygreen}{\textbf{0.27}} \\
+%         $\vert\vert\dot{p} - \dot{p_c}\vert\vert$ $\downarrow$ (m/s) & 0.96 & 1.11 & 1.04 & 1.1 & \textcolor{mygreen}{\textbf{0.91}} \\
+%         $\vert\vert\dot{p}\vert\vert$ $\downarrow$ (m/s) & \textcolor{myred}{\textbf{0.7}} & \textcolor{myred}{\textbf{0.95}} & 0.39 & \textcolor{mygreen}{\textbf{0.35}} & \textcolor{mygreen}{\textbf{0.31}} \\
+%     \hline
+%         braking $\downarrow$ (\%) & - & - & - & 23.8 & \textcolor{mygreen}{\textbf{1.2}} \\
+%     \hline
+%     \end{tabular}
+% \end{table*}
+\begin{figure*}
     \centering
+    \scalebox{1.3}{\input{plots/inhom.pgf}}
+    \vspace{-6mm}
     \caption{Algorithm comparison with GCA, evaluating 6 policies (ORCA is used twice) in an heterogeneous environment.}
-    \label{tab:gca_mix}
-    \begin{tabular}{ | c | c | c | c | c | c | c | }
-    \hline
-        \backslashbox[25mm]{Metrics}{Algorithms} & \makecell{GA3C-\\CADRL} & \makecell{SAC} & \makecell{ORCA} & \makecell{MPC SH \\ relax \\ uncert} & \makecell{ProDMP MPC \\ ORCA, SH} \\
-    \hline
-        return $\uparrow$ & 0.24 & 0.29 & \textcolor{myred}{\textbf{-0.58}} & 0. &  \textcolor{mygreen}{\textbf{0.56}} \\
-        TTG $\downarrow$ (s) &  \textcolor{mygreen}{\textbf{7.9}} & 9.01 & \textcolor{lightgreen}{\textbf{8.25}} & 10 &  \textcolor{myred}{\textbf{15.18}} \\
-        success $\uparrow$ (\%) &  \textcolor{mygreen}{\textbf{97.53}} & 87.73 &  \textcolor{lightgreen}{\textbf{94.93}} &  \textcolor{lightgreen}{\textbf{94.3}} & \textcolor{myred}{\textbf{66.6}} \\
-    \hline
-        col. $\downarrow$ (\%) &  \textcolor{lightgreen}{\textbf{2}} & \textcolor{myred}{\textbf{9.3}} &  \textcolor{myred}{\textbf{4.5}} &  \textcolor{lightgreen}{\textbf{1.4}} & \textcolor{mygreen}{\textbf{0.27}} \\
-        $\vert\vert\dot{p} - \dot{p_c}\vert\vert$ $\downarrow$ (m/s) & 0.96 & 1.11 & 1.04 & 1.1 & \textcolor{mygreen}{\textbf{0.91}} \\
-        $\vert\vert\dot{p}\vert\vert$ $\downarrow$ (m/s) & \textcolor{myred}{\textbf{0.7}} & \textcolor{myred}{\textbf{0.95}} & 0.39 & \textcolor{mygreen}{\textbf{0.35}} & \textcolor{mygreen}{\textbf{0.31}} \\
-    \hline
-        braking $\downarrow$ (\%) & - & - & - & 23.8 & \textcolor{mygreen}{\textbf{1.2}} \\
-    \hline
-    \end{tabular}
-\end{table*}
+    \vspace{-6mm}
+    \label{plots:inhom}
+\end{figure*}
 
 The advantage of MPC is clear in this environment as all other learning approaches fail to achieve zero collisions. Interestingly, ProDMP MPC trained with ORCA and without uncertainty never collides with itself while missing theoretical guarantees. The reduction in braking instances is expected when using uncertainty to model crowd safety and its increase while relaxing this uncertainty is expected as the modeling will make more often mistakes on the correct boundaries. Again in this case the number of braking instances is reduced using ProDMP.
 
-In \Cref{tab:gca_mix} we see how each algorithm fairs in an heterogeneous crowd. This is the same evaluation scenarios used earlier but with different algorithms. We use the best performing agents from \Cref{tab:gca} and add two ORCA agents for a total of 6. GA3C-CADR still dominates in terms of success rate and TTG, however lacks behind in return compared to ProDMP MPC. The reason for this is connected to the fact that ProDMP MPC is very prudent and keeps a high distance to other agents, even too much so, as shown from the high TTG and safety metrics. MPC with relaxed uncertainty performs decently across all metrics while ORCA and SAC have relatively high collision rates.
+In \Cref{plots:inhom} we see how each algorithm fairs in an heterogeneous crowd. This is the same evaluation scenarios used earlier but with different algorithms. We use the best performing agents from \Cref{plots:hom_mpc} and add two ORCA agents for a total of 6. GA3C-CADR still dominates in terms of success rate and TTG, however lacks behind in return compared to ProDMP MPC. The reason for this is connected to the fact that ProDMP MPC is very prudent and keeps a high distance to other agents, even too much so, as shown from the high TTG and safety metrics. MPC with relaxed uncertainty performs decently across all metrics while ORCA and SAC have relatively high collision rates.
 
 \section{DISCUSSION \& CONCLUSION}\label{sec:conclusion}
 We introduce a new approach to combine MPC and learning through the use of an episodic-RL algorithm, ProDMP, trained using TRPL, an on-policy RL method. Instead of using a crowd uninformed objective that aims to go directly to the goal through a straight line, we use trajectories parameterized through ProDMP in order to incorporate the infinite-horizon objective learned through RL. In the evaluation we consider different degrees of complexity for the navigation task. A constant moving crowd can be easily predicted and is more easily adaptable to the MPC framework, however even in this case learning can introduce advantages as it might better avoid deadlock situations in the future. When using ORCA to model the crowd it is necessary to introduce uncertainty in the future position of the crowd. This will make the FRP more eminent. In fact, in this scenario MPC performs really poorly and it can only be improved marginally by relaxing the uncertainty or shortening the horizon. ProDMP MPC introduces a clear improvement in this case.
