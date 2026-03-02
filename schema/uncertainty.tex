@@ -5,7 +5,7 @@
 
     % Draw the first circle
     \begin{scope}
-        \clip (-0.8,-1) rectangle (11,6);
+        \clip (-0.8,-0.81) rectangle (11,6);
         \draw[black!10, fill=black!10] ([xshift=5.1cm]center1) circle (5.9cm);
         \draw[black!20, fill=black!20] ([xshift=3.4cm]center1) circle (4.2cm);
         \draw[black!30, fill=black!30] ([xshift=1.7cm]center1) circle (2.5cm);
@@ -16,15 +16,15 @@
     \draw[fill=red!20, thick] ([xshift=5.1cm]center1) circle (0.8cm);
     \draw[->, thick, -{Stealth[length=3mm, width=2mm]}]{(center1) -- ([xshift=0.9cm]center1) node[midway, above, xshift=-1mm] () {$\dot{\boldsymbol{p}}_{max}$}};
     \draw[thick]{
-        ([xshift=1.7cm]center1) -- ([xshift=1.7cm, yshift=2.5cm]center1) node[midway, below, sloped] () {$r + dt * \dot{\boldsymbol{p}}_{max}$}
-        ([xshift=1.7cm]center1) -- ([xshift=2.5cm]center1) node[midway, below] () {$r$}
+        ([xshift=1.7cm]center1) -- ([xshift=1.7cm, yshift=2.5cm]center1) node[midway, below, sloped] () {$r_c + dt * \dot{\boldsymbol{p}}_{max}$}
+        ([xshift=1.7cm]center1) -- ([xshift=2.5cm]center1) node[midway, below] () {$r_c$}
     };
     \draw[thick]
-        ([xshift=3.4cm]center1) -- ([xshift=3.4cm, yshift=4.2cm]center1) node[midway, below, sloped] () {$r + dt * 2 * \dot{\boldsymbol{p}}_{max}$}
+        ([xshift=3.4cm]center1) -- ([xshift=3.4cm, yshift=4.2cm]center1) node[midway, below, sloped] () {$r_c + dt * 2 * \dot{\boldsymbol{p}}_{max}$}
         ([xshift=3.4cm]center1) -- ([xshift=4.2cm]center1)
     ;
     \draw[thick]
-        ([xshift=5.1cm]center1) -- ([xshift=5.1cm, yshift=5.9cm]center1) node[midway, below, sloped] () {$r + dt * 3 * \dot{\boldsymbol{p}}_{max}$}
+        ([xshift=5.1cm]center1) -- ([xshift=5.1cm, yshift=5.9cm]center1) node[midway, below, sloped] () {$r_c + dt * 3 * \dot{\boldsymbol{p}}_{max}$}
         ([xshift=5.1cm]center1) -- ([xshift=5.9cm]center1)
     ;
 \end{tikzpicture}

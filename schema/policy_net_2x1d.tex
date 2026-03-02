@@ -27,7 +27,7 @@
     }
     % Obs, goal position and velocity
     \node[draw, minimum width=\squareSize, minimum height=4*\squareSize] (obs) at ([yshift=-2cm]lidar_vel.south) {};
-    \node (obs_str) at ([yshift=2.5mm]obs.north) {$\boldsymbol{p}_g, \dot{\boldsymbol{p}}$};
+    \node (obs_str) at ([yshift=3.4mm]obs.north) {\Large $\boldsymbol{p}_g, \dot{\boldsymbol{p}}$};
     \foreach \i in {0,...,3} {
        \draw ([yshift=-\i*\squareSize - \squareSize / 2 - 0.015cm]obs.north) circle (\squareSize / 2 - 0.06cm);
     }
@@ -45,7 +45,7 @@
     \draw (lidar_cat.north) -- (lidar_cat.south);
     \draw ([xshift=0.2cm]lidar.east) -| ([xshift=0.8cm, yshift=-1.4cm]lidar.east);
     \draw ([xshift=0.2cm]lidar_vel.east) -| ([xshift=0.8cm, yshift=-1.4cm]lidar.east);
-    \draw[->, -{Stealth[width=2mm]}] ([xshift=0.8cm, yshift=-1.4cm]lidar.east) -- ([xshift=-0.2cm]lidar_cat.west) node[midway, above, yshift=4pt] () {\textit{cat}};
+    \draw[->, -{Stealth[width=2mm]}] ([xshift=0.8cm, yshift=-1.4cm]lidar.east) -- ([xshift=-0.2cm]lidar_cat.west) node[midway, above, yshift=4pt] () {\Large\textit{cat}};
 
     % CNN
     \node[draw, fill=white, minimum width=2*\squareSize, minimum height=\gridSizeCnn*\squareSize] (cnn_lidar) at ([xshift=3cm,yshift=0.4cm]lidar_cat) {};
@@ -64,7 +64,7 @@
             \draw ([yshift=-\i*\squareSize]cnn_lidar.north west) -- ([yshift=-\i*\squareSize]cnn_lidar.north east);
         }
         \draw (cnn_lidar.north) -- (cnn_lidar.south);
-    \draw [->] ([xshift=0.2cm]lidar_cat.east) -- ([xshift=-0.2cm]cnn_lidar.west) node[midway, above, yshift=4pt] () {1D CNN};
+    \draw [->] ([xshift=0.2cm]lidar_cat.east) -- ([xshift=-0.2cm]cnn_lidar.west) node[midway, above, yshift=4pt] () {\Large 1D \\ \Large CNN};
 
     % MLP for obs
     \node[draw, minimum width=\squareSize, minimum height=5*\squareSize] (obs_mlp) at ([yshift=3cm, xshift=7.8cm]obs) {};
@@ -76,7 +76,7 @@
         \fi
     }
     \draw ([xshift=0.2cm]obs.east) -| ([xshift=0.8cm, yshift=3cm]obs.east);
-    \draw [->, -{Stealth[width=2mm]}] ([xshift=0.8cm, yshift=3cm]obs.east) -- ([xshift=-0.2cm]obs_mlp.west)  node[midway, above, yshift=4pt] () {FCN};
+    \draw [->, -{Stealth[width=2mm]}] ([xshift=0.8cm, yshift=3cm]obs.east) -- ([xshift=-0.2cm]obs_mlp.west)  node[midway, above, yshift=4pt] () {\Large FCN};
 
     % Flatten
     \node[draw, minimum width=\squareSize, minimum height=5*\squareSize] (flat_lidar) at ([xshift=2.6cm]cnn_lidar) {};
@@ -87,7 +87,7 @@
             \draw ([yshift=-\i*\squareSize - \squareSize / 2 - 0.015cm]flat_lidar.north) circle (\squareSize / 2 - 0.06cm);
         \fi
     }
-    \draw [->, -{Stealth[width=2mm]}] ([xshift=0.6cm]cnn_lidar.east) -- ([xshift=-0.2cm]flat_lidar.west)  node[midway, above, yshift=4pt] () {\textit{flatten}};
+    \draw [->, -{Stealth[width=2mm]}] ([xshift=0.6cm]cnn_lidar.east) -- ([xshift=-0.2cm]flat_lidar.west)  node[midway, above, yshift=4pt] () {\Large \textit{flat.}};
 
     \draw ([xshift=0.2cm]flat_lidar.east) -- ([xshift=0.85cm]flat_lidar.east);
     \draw ([xshift=0.2cm]obs_mlp.east) -| ([xshift=0.85cm]flat_lidar.east);
@@ -101,11 +101,11 @@
             \draw ([yshift=-\i*\squareSize - \squareSize / 2 - 0.015cm]mlp_cat_0.north) circle (\squareSize / 2 - 0.06cm);
         \fi
     }
-    \draw [->, -{Stealth[width=2mm]}] ([xshift=0.85cm]flat_lidar.east) -- ([xshift=-0.2cm]mlp_cat_0.west) node[midway, above, xshift=-0.34cm, yshift=4pt] () {\textit{cat},\\ 2$\times$FCN};
+    \draw [->, -{Stealth[width=2mm]}] ([xshift=0.85cm]flat_lidar.east) -- ([xshift=-0.2cm]mlp_cat_0.west) node[midway, above, xshift=-0.34cm, yshift=4pt] () {\Large \textit{cat},\\ \Large 2$\times$FCN};
 
     % Mean
     \node[draw, minimum width=\squareSize, minimum height=5*\squareSize] (mlp_mean) at ([yshift=-1.6cm, xshift=2cm]mlp_cat_0.east) {};
-    \node (mlp_mean_str) at ([xshift=0.4cm]mlp_mean.east) {$\sigma$};
+    \node (mlp_mean_str) at ([xshift=0.4cm]mlp_mean.east) {\Large $\sigma$};
     \foreach \i in {0,...,4} {
         \ifnum \i = 2
             \draw[thick, dotted] ([yshift=-\i*\squareSize - \squareSize / 2  + 0.2cm]mlp_mean.north) -- ([yshift=-\i*\squareSize - \squareSize / 2  - 0.22cm]mlp_mean.north);
@@ -113,10 +113,10 @@
             \draw ([yshift=-\i*\squareSize - \squareSize / 2 - 0.015cm]mlp_mean.north) circle (\squareSize / 2 - 0.06cm);
         \fi
     }
-    \draw [->, -{Stealth[width=2mm]}] ([xshift=0.2cm]mlp_cat_0.east) -- ([xshift=-0.2cm]mlp_mean.west)  node[midway, below, yshift=-1pt, sloped] () {FCN};
+    \draw [->, -{Stealth[width=2mm]}] ([xshift=0.2cm]mlp_cat_0.east) -- ([xshift=-0.2cm]mlp_mean.west)  node[midway, below, yshift=-1pt, sloped] () {\Large FCN};
     % STD
     \node[draw, minimum width=\squareSize, minimum height=5*\squareSize] (mlp_std) at ([yshift=1.6cm, xshift=2cm]mlp_cat_0.east) {};
-    \node (mlp_std_str) at ([xshift=0.4cm]mlp_std.east) {$\mu$};
+    \node (mlp_std_str) at ([xshift=0.4cm]mlp_std.east) {\Large $\mu$};
     \foreach \i in {0,...,4} {
         \ifnum \i = 2
             \draw[thick, dotted] ([yshift=-\i*\squareSize - \squareSize / 2  + 0.2cm]mlp_std.north) -- ([yshift=-\i*\squareSize - \squareSize / 2  - 0.22cm]mlp_std.north);
@@ -124,7 +124,7 @@
             \draw ([yshift=-\i*\squareSize - \squareSize / 2 - 0.015cm]mlp_std.north) circle (\squareSize / 2 - 0.06cm);
         \fi
     }
-    \draw [->, -{Stealth[width=2mm]}] ([xshift=0.2cm]mlp_cat_0.east) -- ([xshift=-0.2cm]mlp_std.west)  node[midway, above, yshift=1pt, sloped] () {FCN};
+    \draw [->, -{Stealth[width=2mm]}] ([xshift=0.2cm]mlp_cat_0.east) -- ([xshift=-0.2cm]mlp_std.west)  node[midway, above, yshift=1pt, sloped] () {\Large FCN};
 
     % Weight sampling
     \draw (mlp_std_str) -| ([xshift=0.5cm]mlp_mean_str.east);
