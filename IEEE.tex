@@ -357,6 +357,19 @@ To simplify the problem and reduce numerical complexity, velocity control is use
             \boldsymbol{0} & M_{yv} \\
         \end{bmatrix},
 \end{align}
+% \begin{tikzpicture}[remember picture, overlay]
+%     \draw [rounded corners]
+%         ([xshift=-4.46mm,yshift=1.5mm]up.center) --
+%         ([xshift=1mm,yshift=1.5mm]up.center) --
+%         ([xshift=1mm,yshift=-2.3mm]up.center) --
+%         cycle;
+%     \draw [rounded corners]
+%         ([xshift=-1.6mm,yshift=-1.4mm]lo.center) --
+%         ([xshift=4.1mm,yshift=-1.4mm]lo.center) --
+%         ([xshift=-1.6mm,yshift=2.62mm]lo.center) --
+%         cycle;
+%     \draw let \p1=($(to)-(bo)$),\n1={atan2(\y1,\x1)} in node[xshift=0mm,yshift=0mm,rotate fit=\n1,fit=(bo) (to),draw,rounded corners,inner sep=1.5pt]{};
+% \end{tikzpicture}
 where $P^y$ is analogous to $P^y$, $M_{xv}=M_{yv}\in\mathbb{R}^{N\times N}$. In the following, $x$ and $y$ will not be treated separately and we concatenate appropriately to get $P_0=\begin{bmatrix}
     p^x_0, \dots p^x_0, p^y_0, \dots p^y_0
 \end{bmatrix}\in\mathbb{R}^{2N}$, $\dot{P}_0\in\mathbb{R}^{2N}$, $M_{pv}\in\mathbb{R}^{2N\times 2N}$ and $\dot{P}\in\mathbb{R}^{2N}$. After modeling $P$, we define the cost function as the distance to a reference trajectory (e.g. straight line to goal), $\frac{1}{2}\vert\vert P - P^{ref}\vert\vert$. This gives us a quadratic function to optimize with \Cref{eq:dynamics_horizon}
@@ -364,23 +377,6 @@ where $P^y$ is analogous to $P^y$, $M_{xv}=M_{yv}\in\mathbb{R}^{N\times N}$. In 
     &\min\limits_{\dot{P}}\frac{1}{2}\vert\vert P - P^{ref}\vert\vert \Leftrightarrow \min\limits_{\dot{P}}\frac{1}{2}\left(P-P^{ref}\right)^\intercal\left(P-P^{ref}\right) \Leftrightarrow \nonumber\\
     &\min\limits_{\dot{P}} \frac{1}{2}\dot{P}^\intercal\underbrace{M_{pv}^\intercal M_{pv}}_{\substack{=Q \\ \text{quadratic term} }}\dot{P} +  \underbrace{\left(P_0-P^{ref}+ \frac{1}{2}T\dot{P}_0\right)^\intercal M_{pv}}_{=q \;\text{linear term}}\dot{P}.\nonumber
 \end{align*}
-% \begin{tikzpicture}[remember picture, overlay]
-%     \draw [rounded corners]
-%         ([xshift=-4.46mm,yshift=1.5mm]up.center) --
-%         ([xshift=1mm,yshift=1.5mm]up.center) --
-%         ([xshift=1mm,yshift=-2.3mm]up.center) --
-%         cycle;
-% \end{tikzpicture}
-% \begin{tikzpicture}[remember picture,overlay]
-%     \draw [rounded corners]
-%         ([xshift=-1.6mm,yshift=-1.4mm]lo.center) --
-%         ([xshift=4.1mm,yshift=-1.4mm]lo.center) --
-%         ([xshift=-1.6mm,yshift=2.62mm]lo.center) --
-%         cycle;
-% \end{tikzpicture}
-% \begin{tikzpicture}[remember picture,overlay]
-%     \draw let \p1=($(to)-(bo)$),\n1={atan2(\y1,\x1)} in node[xshift=0mm,yshift=0mm,rotate fit=\n1,fit=(bo) (to),draw,rounded corners,inner sep=1.5pt]{};
-% \end{tikzpicture}
 
 
 Linear constraints are arbitrarily added to this objective, see \Cref{tab:constraints}. Passive safety is ensured by explicitly setting the last step of the control vector $\dot{P}$ to zero. Velocity and acceleration constraints are non-linear as we assume a threshold value in all directions. The circle representing the constraint is linearized using an octagon. Each edge of the octagon is represented by an inequality $y - m_ix-b_i<0$. This implies multiplying $x$ (the first half of $\dot{P}$) by $m_i$ while $y$ remains the same, and the constant $b_i$ is moved to the right side. In order to calculate the acceleration from the given velocity path, velocities at steps $k+1$ and $k$ are subtracted and divided by $T$, from \Cref{eq:dynamics} which is parallelized with matrix $D$. $\ddot{\boldsymbol{p}}_1$  depends on $\dot{\boldsymbol{p}}_0$, written on the right side of the inequality. Finally, the crowd constraint is linearized by assuming that the agent will follow the last computed MPC trajectory $\boldsymbol{\bar{p}}$. We also assume that the members of the crowd maintain the current velocity and increase the safety distance by the maximum distance in the error of the prediction. The maximum error will be lower than the distance covered during time-step $T$ with $\dot{\boldsymbol{p}}_{max}$, as represented in \Cref{fig:uncert}.
@@ -428,18 +424,12 @@ Linear constraints are arbitrarily added to this objective, see \Cref{tab:constr
 %         ([xshift=1mm,yshift=1.5mm]upper.center) --
 %         ([xshift=1mm,yshift=-1.9mm]upper.center) --
 %         cycle;
-% \end{tikzpicture}
-% \begin{tikzpicture}[remember picture,overlay]
 %     \draw [rounded corners]
 %         ([xshift=-2mm,yshift=-1.3mm]lower.center) --
 %         ([xshift=6.2mm,yshift=-1.3mm]lower.center) --
 %         ([xshift=-2mm,yshift=1.85mm]lower.center) --
 %         cycle;
-% \end{tikzpicture}
-% \begin{tikzpicture}[remember picture,overlay]
 %     \draw let \p1=($(top)-(bottom)$),\n1={atan2(\y1,\x1)} in node[xshift=-0.4mm,yshift=0mm,rotate fit=\n1,fit=(bottom) (top),draw,rounded corners,inner sep=1.5pt]{};
-% \end{tikzpicture}
-% \begin{tikzpicture}[remember picture,overlay]
 %     \draw let \p1=($(top2)-(bottom2)$),\n1={atan2(\y1,\x1)} in node[xshift=-0.2mm,yshift=0.5mm,rotate fit=\n1,fit=(bottom2) (top2),draw,rounded corners, inner xsep=1.5pt, inner ysep=0.5pt]{};
 % \end{tikzpicture}
 \begin{figure}[ht]
@@ -519,7 +509,7 @@ We evaluate our approach in three main perspectives: efficiency as a means to me
 
 \subsection{Constant Velocity Crowd}
 
-In the environment depicted in \Cref{fig:env}, the crowd prediction is perfect, giving the best performance for MPC. Results in \Cref{plots:const} show that MPC achieves the lowest TTG due to its objective to do so in a straight path with $\dot{\boldsymbol{p}}_{max}$. This comes at the cost of a reduced success rate because it ignores the crowd and the optimal path relative to it. Combining MPC with a learned RL trajectory results in higher success rate $\sim$5\%. While a lower TTG means a higher return, ignoring a comfortable distance to the crowd penalises MPC. Furthermore, increasing the distance constraint to optimize this component of the reward would compromise goal-reaching efficiency. As expected, pure RL methods have high return, especially ProDMP while SAC maintains a high collision rate reducing considerably performance. Note that the return is an arbitrary metric, by lowering goal component $C_g$ it is possible to have a higher value for MPC compared to ProDMP, and similarly by increasing the penalty for collisions it is possible to have a higher return for MPC when compared to SAC and ProDMP, in contrast ProDMP MPC remains robust w.r.t. these changes.
+In the environment depicted in \Cref{fig:env}, the crowd prediction is perfect, giving the best performance for MPC. Results in \Cref{plots:const} show that MPC achieves the lowest TTG due to its objective to do so in a straight path with $\dot{\boldsymbol{p}}_{max}$. This comes at the cost of a reduced success rate because it ignores the crowd and the optimal path relative to it. Combining MPC with a learned RL trajectory results in higher success rate by $\sim$5\%. While a lower TTG means a higher return, ignoring a comfortable distance to the crowd penalises MPC. Furthermore, increasing the distance constraint to optimize this component of the reward would compromise goal-reaching efficiency. As expected, pure RL methods have high return, especially ProDMP while SAC maintains a high collision rate reducing considerably performance. Note that the return is an arbitrary metric, by lowering goal component $C_g$ it is possible to have a higher value for MPC compared to ProDMP, and similarly by increasing the penalty for collisions it is possible to have a higher return for MPC when compared to SAC and ProDMP, in contrast ProDMP MPC remains robust w.r.t. these changes.
 % \begin{table*}[ht]
 %     \centering
 %     \caption{algorithm comparison for constant crowd environment.}
@@ -554,9 +544,9 @@ In the environment depicted in \Cref{fig:env}, the crowd prediction is perfect, 
 Because of the perfect prediction of the crowd, MPC and ProDMP MPC exhibit similar collision rates, outperforming pure RL methods. Collisions persist due to the high density of the crowd, which results in situations where avoidance is unavoidable. The collision speed and area of intersection are highly noisy, but the higher speed and lower area for SAC and ProDMP is notable. In these methods the policy evades the collision until the last moment while MPC based approaches only require stopping before the collision without consideration on severity. Importantly, some metrics are inversely correlated, e.g. a lower collision rate indicates that the few remaining collisions will be more severe, thus less avoidable and analogously for TTG and success rate.
 %The TTG will be lower for easier scenarios while lowering the success rate when failing more complicated scenarios.
 
-Finally, the number of braking instances is reduced by a lower horizon (which lowers the number of constraints) and when using ProDMP. Going from horizon 20 to 10 reduces the braking by almost 30\% and using learned trajectories reduces by around 20\%. We dynamically change the horizon in cases where the QP-solver does not find a solution. Three shorter horizons (SH) are executed by reducing in half (by default from 20 to 10 to 5 to 3). For high enough deceleration the shortened horizon introduces no problems for passive safety. Using this technique has altogether a positive effects on all metrics. Simply using a shorter horizon will have a negative effect on the ability of MPC to avoid future collisions. Based on the experiments on the constant crowd we set a default MPC horizon of 20 (2s). Longer trajectories of 30 and 40 steps introduced no clear advantage as they reduce the collision rate to 0.1\% and further to 0\%, but lower also the success rate by 0.1\% and further by 0.8\%.
+Finally, the number of braking instances is reduced by a lower horizon (which lowers the number of constraints) and when using ProDMP. Going from horizon 20 to 10 reduces the braking by almost 30\% and using learned trajectories reduces by around 20\%. We dynamically change the horizon in cases where the QP-solver does not find a solution. Three shorter horizons (SH) are executed by reducing in half (by default from 21 to 10 to 5 to 3). For high enough deceleration the shortened horizon introduces no problems for passive safety. Using this technique has altogether a positive effects on all metrics. Simply using a shorter horizon will have a negative effect on the ability of MPC to avoid future collisions. Based on the experiments on the constant crowd we set a default MPC horizon of 20 (2s). Longer trajectories of 30 and 40 steps introduced no clear advantage as they reduce the collision rate to 0.1\% and further to 0\%, but lower also the success rate by 0.1\% and further by 0.8\%.
 
-\subsection{ORCA crowd}
+\subsection{ORCA Crowd}
 
 By using ORCA \cite{berg_optimal_2011} the crowd prediction is not perfect as the crowd will accelerate and decelerate towards the goal while avoiding collisions. In order to make the task more difficult for the agent, members modeled with ORCA take in consideration only a fraction ($\frac{1}{4}$) of the physical space the agent occupies. This means that the majority of the collision avoidance task has to be undertaken by the agent itself.
 
@@ -648,13 +638,13 @@ Because of the uncertainty in the crowd position, MPC performs quite poorly ($\s
     \label{plots:orca_mpc}
 \end{figure*}
 
-ProDMP performs on par with MPC while colliding less. ProDMP MPC introduces an advantage as the percentage of braking trajectory is severely decreases. As mentioned, training ProDMP with crowd uncertainty proved to be difficult as MPC control on top of the ProDMP trajectory gets very unsmooth. The ProDMP MPC agent with uncertainty ensures passive safety, but noticeably reduces success rate and return while increasing collisions. The best performance is achieved by lowering $C_c$ by half (Prox) to encourage more efficient trajectories. Slightly increasing the safety distance (AD) in MPC to better share the task of collision avoidance between learning and classic control, improves safety considerably lowering collision rate by $\sim10\%$.
+ProDMP performs on par with MPC while colliding less. ProDMP MPC introduces an advantage as the percentage of braking trajectory is severely decreased. As mentioned, training ProDMP with crowd uncertainty proved to be difficult as MPC control on top of the ProDMP trajectory gets very unsmooth. The ProDMP MPC agent with uncertainty ensures passive safety, but noticeably reduces success rate and return while increasing collisions. The best performance is achieved by lowering $C_c$ by half (Prox) to encourage more efficient trajectories. Slightly increasing the safety distance (AD) in MPC to better share the task of collision avoidance between learning and classic control, improves safety considerably lowering collision rate by $\sim10\%$. An interesting finding is the increase in success rate to $ \sim 70\%$ when adding noise (Gaussian) to the observations (and dropout for LiDAR) with marginal drawback in other metrics, we leave the full analysis for future work focusing on sim-to-real transfer.
 
 % The behaviour of MPC was analyzed further for shorter horizons of 10 and 5 in order to evaluate if the reduction of constraints in scenarios with high uncertainty would benefit the overall policy. In the second part of \Cref{tab:orca} we see that both efficiency and braking trajectories get better with a shorter horizon however collision rate gets worse. When changing the horizon dynamically, the trade-off gets more complex as an horizon of 10 will achieve a better success rate and TTG while an horizon of 20 will have overall a higher return and less collisions. Training ProDMP with a short horizon yields much better results in cases where crowd uncertainty is employed, however ignoring crowd uncertainty is still more efficient and arguably safer at the cost of violating passive safety.
 
 \subsection{Gym-collision-avoidance}
 
-We use GCA to compare with GA3C-CADRL \cite{everett_collision_2021}. We first analyze the performance of each algorithm in an homogeneous crowd controlled by the same policy, see \Cref{plots:hom_mpc}. GA3C-CADRL is trained with a crowd of other GA3C-CADRL and ORCA policies. Our learning approaches are trained only with ORCA. GA3C-CADRL achieves the highest performance and efficiency. While MPC-SH and SAC have lower TTG, this is due to the much lower success rate. MPC with relaxed crowd uncertainty (relax) does the second best in terms of success rate meaning it better cooperates with itself compared to ProDMP MPC. While the return is higher for ProDMP MPC, this is cause by the proxemics penalty MPC receives. The same is indicative from the lower return when using a relaxed uncertainty for MPC which results in closer interactions between agents. Similarly to the performance of ProDMP MPC when using ORCA to model the crowd, adding uncertainty to the crowd prediction drastically diminishes performance in all three metrics (omitted in \Cref{plots:hom_mpc}).
+We use GCA to compare with GA3C-CADRL \cite{everett_collision_2021}. We first analyze the performance of each algorithm in an homogeneous crowd controlled by the same policy, see \Cref{plots:hom_mpc}. GA3C-CADRL is trained with a crowd of other GA3C-CADRL and ORCA policies. Our learning approaches are trained only with ORCA. GA3C-CADRL achieves the highest performance and efficiency. While MPC-SH and SAC have lower TTG, this is due to the much lower success rate. MPC with relaxed crowd uncertainty (relax) does the second best in terms of success rate meaning it better cooperates with itself compared to ProDMP MPC. While the return is higher for ProDMP MPC, this is caused by the proxemics penalty MPC receives. The same is indicative from the lower return when using a relaxed uncertainty resulting in closer interactions between agents. Similarly to the performance of ProDMP MPC when using ORCA to model the crowd, adding uncertainty to the crowd prediction drastically diminishes performance in all three metrics (omitted in \Cref{plots:hom_mpc}).
 % \begin{table*}[ht]
 %     \centering
 %     \caption{Algorithm comparison with GCA, evaluation using 4, 5 and 6 agents in an homogeneous environment.}
@@ -680,7 +670,7 @@ We use GCA to compare with GA3C-CADRL \cite{everett_collision_2021}. We first an
 \begin{figure*}
     \centering
     \scalebox{1.3}{\input{plots/hom_mpc.pgf}}
-    \vspace{-10mm}
+    \vspace{-6mm}
     \caption{Algorithm comparison with GCA, evaluation using 4, 5 and 6 agents in an homogeneous environment.}
     \vspace{-4mm}
     \label{plots:hom_mpc}
@@ -717,7 +707,7 @@ We use GCA to compare with GA3C-CADRL \cite{everett_collision_2021}. We first an
 
 The advantage of using MPC is clear in this environment as it is able to achieve zero collisions. Interestingly, MPC with relaxed uncertainty and ProDMP MPC with augmented safety distance (AD) never collide while missing theoretical guarantees. Again in this case the number of braking instances is reduced using ProDMP MPC. This is not enough to increase the performance compared to MPC as the agent is too cautious in its interaction, probably due to an aggressive behaviour from ORCA which is used for training.
 
-In \Cref{plots:inhom} we see how different algorithms fair in an heterogeneous crowd using the same evaluation scenarios as before. We use the best performing agents from \Cref{plots:hom_mpc} and an ORCA agent for a total of 6. GA3C-CADRL still dominates in terms of success rate and TTG, nonetheless it lacks behind in return and safety compared to ProDMP MPC. The reason for this is connected to the fact that ProDMP MPC is very prudent and keeps a high distance to other agents, even too much so, as shown from the high TTG and safety metrics. MPC with relaxed uncertainty performs decently across all metrics while ORCA and SAC have relatively high collision rates.
+In \Cref{plots:inhom} we see how different algorithms fair in an heterogeneous crowd using the same evaluation scenarios as before. We use the best performing agents from \Cref{plots:hom_mpc} and an ORCA agent. GA3C-CADRL still dominates in terms of success rate and TTG, nonetheless it lacks behind in return and safety compared to ProDMP MPC. This is connected to the fact that ProDMP MPC is very prudent and keeps a high distance to other agents, even too much so, as shown from the high TTG and safety metrics. MPC with relaxed uncertainty performs decently across all metrics while ORCA and SAC have relatively high collision rates.
 
 \section{DISCUSSION \& CONCLUSION}\label{sec:conclusion}
 We introduce a new approach to combine MPC and learning through the use of an episodic-RL algorithm, ProDMP, trained using TRPL, an on-policy RL method. Instead of using a crowd uninformed objective that aims to go directly to the goal through a straight line, we use trajectories parameterized through ProDMP in order to incorporate the infinite-horizon objective learned through RL. In the evaluation we consider different degrees of complexity for the navigation task. A constant moving crowd can be easily predicted and is more adaptable to the MPC framework, however even in this case learning can introduce advantages as it might better avoid deadlock situations in the future. When using ORCA to model the crowd it is necessary to introduce uncertainty in the future position of the crowd. This makes the FRP more eminent. In fact, in this scenario MPC performs really poorly and it can only be improved marginally by relaxing the uncertainty or shortening the horizon. ProDMP MPC introduces a clear improvement in this case.
@@ -726,7 +716,7 @@ In GCA it was made clear that without joint-collision avoidance it is difficult 
 
 \section{FUTURE WORK}
 
-We see the use of classic control as integral in robotics as it offers the basis for safety while also facilitating an easier and more explainable implementation in the real world. In future work we will try to relax the strong theoretical conditions for MPC by tuning the horizon lengths accordingly, using predictive systems to avoid explosion of uncertainty and comparing to sampling-based MPC approaches. Additionally, it is essential to train our policy with different crowd strategies to generalize better. Finally, we aim to improve our current approach by incorporating more complex learning architectures like Transformers and diffusion-models.
+We see the use of classic control as integral in robotics as it offers the basis for safety while also facilitating an easier and more explainable implementation in the real world. In future work we will try to relax the strong theoretical conditions for MPC by tuning the horizon lengths accordingly, using predictive systems to avoid explosion of uncertainty and comparing to sampling-based MPC approaches. Additionally, it is essential to train our policy with different crowd strategies and noisy sensors to generalize better. Finally, we aim to improve our current approach by incorporating more complex learning architectures like Transformers and diffusion-models.
 
 \bibliographystyle{IEEEtran.bst} % We choose the "IEEetran" reference style
 \bibliography{references.bib} % Entries are in the references.bib file
